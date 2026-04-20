@@ -1,0 +1,15 @@
+version = 1
+
+[app]
+kind = "project"
+dir = "."
+name = "PulseGrid"
+entry = "src/main.cpp"
+
+[build]
+preset = "dev-ninja"
+run_preset = "run-dev-ninja"
+
+[features]
+static_rt = true
+full_static = true

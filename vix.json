@@ -1,0 +1,80 @@
+{
+  "name": "PulseGrid",
+  "deps": [],
+  "vars": {
+    "preset": "dev-ninja",
+    "release_preset": "release",
+    "log_level": "info"
+  },
+  "tasks": {
+    "fmt": "vix fmt",
+    "check": {
+      "description": "Validate project health",
+      "command": "vix check --preset ${preset} --tests",
+      "env": {
+        "VIX_LOG_LEVEL": "${log_level}"
+      }
+    },
+    "test": {
+      "description": "Run project tests",
+      "command": "vix tests --preset ${preset} --fail-fast"
+    },
+    "dev": {
+      "description": "Start dev mode",
+      "command": "vix dev"
+    },
+    "ci": {
+      "description": "Local CI pipeline",
+      "deps": [
+        "fmt"
+      ],
+      "commands": [
+        "vix check --preset ${preset} --tests",
+        "vix tests --preset ${preset} --fail-fast"
+      ]
+    },
+    "release": {
+      "description": "Release pipeline",
+      "deps": [
+        "fmt",
+        "test"
+      ],
+      "vars": {
+        "preset": "${release_preset}"
+      },
+      "env": {
+        "VIX_LOG_LEVEL": "warn"
+      },
+      "cwd": "${project_dir}",
+      "commands": [
+        "vix build --preset ${preset}",
+        "vix check --preset ${preset} --tests"
+      ],
+      "linux": {
+        "commands": [
+          "vix build --preset ${preset}",
+          "vix check --preset ${preset} --tests --run"
+        ]
+      },
+      "windows": {
+        "command": "vix build --preset dev-msvc"
+      },
+      "macos": {
+        "commands": [
+          "vix build --preset ${preset}",
+          "vix tests --preset ${preset}"
+        ]
+      }
+    },
+    "package": {
+      "description": "Build package artifacts",
+      "deps": [
+        "release"
+      ],
+      "commands": [
+        "echo Packaging project from ${project_dir}",
+        "vix build --preset ${release_preset}"
+      ]
+    }
+  }
+}
