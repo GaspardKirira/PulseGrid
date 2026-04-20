@@ -1,6 +1,5 @@
 {
   "version": 6,
-
   "configurePresets": [
     {
       "name": "dev-ninja",
@@ -10,8 +9,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "VIX_LINK_STATIC": "ON",
-        "VIX_LINK_FULL_STATIC": "ON"
+        "VIX_LINK_STATIC": "OFF",
+        "VIX_LINK_FULL_STATIC": "OFF"
       }
     },
     {
@@ -22,28 +21,64 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "VIX_LINK_STATIC": "ON",
-        "VIX_LINK_FULL_STATIC": "ON"
+        "VIX_LINK_STATIC": "OFF",
+        "VIX_LINK_FULL_STATIC": "OFF"
       }
     },
     {
       "name": "dev-msvc",
       "displayName": "Dev (MSVC, Release)",
       "generator": "Visual Studio 17 2022",
-      "architecture": { "value": "x64" },
+      "architecture": {
+        "value": "x64"
+      },
       "binaryDir": "build-msvc",
       "cacheVariables": {
         "CMAKE_CONFIGURATION_TYPES": "Release"
       }
     }
   ],
-
   "buildPresets": [
-    { "name": "build-ninja", "displayName": "Build (ALL, Ninja Debug)", "configurePreset": "dev-ninja" },
-    { "name": "build-release", "displayName": "Build (ALL, Ninja Release)", "configurePreset": "release" },
-    { "name": "run-dev-ninja", "displayName": "Run (target=run, Ninja Debug)", "configurePreset": "dev-ninja", "targets": ["run"] },
-    { "name": "run-release", "displayName": "Run (target=run, Ninja Release)", "configurePreset": "release", "targets": ["run"] },
-    { "name": "build-msvc", "displayName": "Build (ALL, MSVC)", "configurePreset": "dev-msvc", "configuration": "Release" },
-    { "name": "run-msvc", "displayName": "Run (target=run, MSVC)", "configurePreset": "dev-msvc", "configuration": "Release", "targets": ["run"] }
+    {
+      "name": "build-ninja",
+      "displayName": "Build (ALL, Ninja Debug)",
+      "configurePreset": "dev-ninja"
+    },
+    {
+      "name": "build-release",
+      "displayName": "Build (ALL, Ninja Release)",
+      "configurePreset": "release"
+    },
+    {
+      "name": "run-dev-ninja",
+      "displayName": "Run (target=run, Ninja Debug)",
+      "configurePreset": "dev-ninja",
+      "targets": [
+        "run"
+      ]
+    },
+    {
+      "name": "run-release",
+      "displayName": "Run (target=run, Ninja Release)",
+      "configurePreset": "release",
+      "targets": [
+        "run"
+      ]
+    },
+    {
+      "name": "build-msvc",
+      "displayName": "Build (ALL, MSVC)",
+      "configurePreset": "dev-msvc",
+      "configuration": "Release"
+    },
+    {
+      "name": "run-msvc",
+      "displayName": "Run (target=run, MSVC)",
+      "configurePreset": "dev-msvc",
+      "configuration": "Release",
+      "targets": [
+        "run"
+      ]
+    }
   ]
 }

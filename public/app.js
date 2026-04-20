@@ -1,58 +1,17 @@
-// PulseGrid frontend (minimal, clean, production-style)
-// Uses plain fetch + optional WebSocket for live updates
-
 const API = {
   base: "",
   monitors: "/api/monitors",
-  health: "/api/health",
-  status: "/api/status",
+  summary: "/api/status/summary",
+  meta: "/_meta",
 };
 
 const state = {
   monitors: [],
-  connected: false,
 };
-
-// -----------------------------------------------------
-// Utils
-// -----------------------------------------------------
 
 function qs(selector) {
   return document.querySelector(selector);
 }
-
-function create(tag, attrs = {}, children = []) {
-  const el = document.createElement(tag);
-
-  for (const [k, v] of Object.entries(attrs)) {
-    if (k === "class") el.className = v;
-    else if (k === "text") el.textContent = v;
-    else el.setAttribute(k, v);
-  }
-
-  for (const c of children) {
-    el.appendChild(c);
-  }
-
-  return el;
-}
-
-function statusClass(status) {
-  switch (status) {
-    case "up":
-      return "status-up";
-    case "down":
-      return "status-down";
-    case "degraded":
-      return "status-degraded";
-    default:
-      return "status-unknown";
-  }
-}
-
-// -----------------------------------------------------
-// API
-// -----------------------------------------------------
 
 async function fetchJson(url, opts = {}) {
   const res = await fetch(API.base + url, {
@@ -60,182 +19,122 @@ async function fetchJson(url, opts = {}) {
     ...opts,
   });
 
+  const data = await res.json();
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Request failed");
+    throw new Error(data?.error || "Request failed");
   }
 
-  return res.json();
+  return data;
+}
+
+function statusClass(status) {
+  switch ((status || "").toLowerCase()) {
+    case "up":
+      return "up";
+    case "down":
+      return "down";
+    case "degraded":
+      return "degraded";
+    case "paused":
+      return "paused";
+    default:
+      return "unknown";
+  }
+}
+
+async function loadMeta() {
+  const badge = qs("#meta-version");
+  if (!badge) return;
+
+  try {
+    const data = await fetchJson(API.meta);
+    badge.textContent = "v" + (data.version || "?");
+  } catch {
+    badge.textContent = "v?";
+  }
+}
+
+async function loadSummary() {
+  const summary = qs("#summary");
+  if (!summary) return;
+
+  try {
+    const data = await fetchJson(API.summary);
+    summary.textContent =
+      "Total: " +
+      (data.total_monitors ?? 0) +
+      " • Up: " +
+      (data.up_monitors ?? 0) +
+      " • Down: " +
+      (data.down_monitors ?? 0) +
+      " • Degraded: " +
+      (data.degraded_monitors ?? 0) +
+      " • Paused: " +
+      (data.paused_monitors ?? 0) +
+      " • Open incidents: " +
+      (data.open_incidents ?? 0);
+  } catch (e) {
+    summary.textContent = e.message || "Error loading summary";
+  }
+}
+
+function renderMonitor(m) {
+  const status = (m.status || "unknown").toLowerCase();
+  const slugPart = m.slug
+    ? `<div class="meta" style="margin-top: 6px;">Slug: <a href="/status/${encodeURIComponent(m.slug)}" style="color:#93c5fd;text-decoration:none;">${m.slug}</a></div>`
+    : "";
+
+  return `
+    <div class="card">
+      <h3>${m.name || "Unnamed monitor"}</h3>
+      <div class="meta">${m.url || ""}</div>
+      <div class="meta" style="margin-top: 6px;">Interval: ${m.interval_seconds ?? "?"}s</div>
+      ${slugPart}
+      <div class="status ${statusClass(status)}">
+        ${status.toUpperCase()}
+      </div>
+    </div>
+  `;
+}
+
+function renderMonitors() {
+  const grid = qs("#grid");
+  if (!grid) return;
+
+  if (!state.monitors.length) {
+    grid.innerHTML = "<p class='empty'>No monitors yet.</p>";
+    return;
+  }
+
+  grid.innerHTML = state.monitors.map(renderMonitor).join("");
 }
 
 async function loadMonitors() {
   try {
     const data = await fetchJson(API.monitors);
-    state.monitors = data.monitors || data || [];
-    renderMonitors();
-  } catch (e) {
-    showError(e.message);
-  }
-}
 
-async function createMonitor(payload) {
-  try {
-    await fetchJson(API.monitors, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-
-    await loadMonitors();
-    showSuccess("Monitor created");
-  } catch (e) {
-    showError(e.message);
-  }
-}
-
-// -----------------------------------------------------
-// Rendering
-// -----------------------------------------------------
-
-function renderMonitors() {
-  const container = qs("#monitors");
-  if (!container) return;
-
-  container.innerHTML = "";
-
-  if (!state.monitors.length) {
-    container.appendChild(
-      create("div", { class: "empty-state", text: "No monitors yet." }),
-    );
-    return;
-  }
-
-  for (const m of state.monitors) {
-    const card = create("div", { class: "card" });
-
-    const header = create("div", { class: "row-between" }, [
-      create("div", {}, [
-        create("h3", { class: "monitor-name", text: m.name || "Unnamed" }),
-        create("div", { class: "monitor-url", text: m.url }),
-      ]),
-      create("span", {
-        class: `status-pill ${statusClass(m.status)}`,
-        text: m.status || "unknown",
-      }),
-    ]);
-
-    const meta = create("div", {
-      class: "monitor-meta",
-      text: `interval: ${m.interval || "?"}s`,
-    });
-
-    card.appendChild(header);
-    card.appendChild(meta);
-
-    container.appendChild(card);
-  }
-}
-
-// -----------------------------------------------------
-// Form
-// -----------------------------------------------------
-
-function setupForm() {
-  const form = qs("#create-form");
-  if (!form) return;
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const name = form.querySelector("input[name=name]").value.trim();
-    const url = form.querySelector("input[name=url]").value.trim();
-    const interval = parseInt(
-      form.querySelector("input[name=interval]").value,
-      10,
-    );
-
-    if (!url) {
-      showError("URL is required");
-      return;
+    if (!data.ok) {
+      throw new Error("Failed to load monitors");
     }
 
-    createMonitor({
-      name,
-      url,
-      interval: interval || 30,
-    });
-
-    form.reset();
-  });
-}
-
-// -----------------------------------------------------
-// Notifications
-// -----------------------------------------------------
-
-function showError(msg) {
-  const box = qs("#messages");
-  if (!box) return;
-
-  box.innerHTML = "";
-  box.appendChild(create("div", { class: "error-box", text: msg }));
-}
-
-function showSuccess(msg) {
-  const box = qs("#messages");
-  if (!box) return;
-
-  box.innerHTML = "";
-  box.appendChild(create("div", { class: "success-box", text: msg }));
-}
-
-// -----------------------------------------------------
-// WebSocket (optional real-time)
-// -----------------------------------------------------
-
-function connectWS() {
-  if (!("WebSocket" in window)) return;
-
-  try {
-    const protocol = location.protocol === "https:" ? "wss://" : "ws://";
-    const ws = new WebSocket(protocol + location.host + "/ws/status");
-
-    ws.onopen = () => {
-      state.connected = true;
-      console.log("WS connected");
-    };
-
-    ws.onclose = () => {
-      state.connected = false;
-      console.log("WS disconnected, retrying...");
-      setTimeout(connectWS, 3000);
-    };
-
-    ws.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data);
-
-        if (data.type === "status_update") {
-          const m = state.monitors.find((x) => x.id === data.id);
-          if (m) {
-            m.status = data.status;
-            renderMonitors();
-          }
-        }
-      } catch (_) {}
-    };
+    state.monitors = Array.isArray(data.data) ? data.data : [];
+    renderMonitors();
   } catch (e) {
-    console.warn("WS error", e);
+    const grid = qs("#grid");
+    if (grid) {
+      grid.innerHTML = `<p class="empty">${e.message || "Error loading monitors"}</p>`;
+    }
   }
 }
 
-// -----------------------------------------------------
-// Init
-// -----------------------------------------------------
-
-function init() {
-  setupForm();
-  loadMonitors();
-  connectWS();
+async function init() {
+  await loadMeta();
+  await loadSummary();
+  await loadMonitors();
 }
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+  init();
+  setInterval(loadMonitors, 5000);
+  setInterval(loadSummary, 5000);
+});

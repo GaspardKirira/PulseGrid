@@ -277,10 +277,17 @@
 
       try {
         const response = await fetch(`/api/status/${encodeURIComponent(slug)}`);
-        const data = await response.json();
 
         if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
           showError(data?.error || "Failed to load public status.");
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!data.monitor) {
+          showError("Invalid response format.");
           return;
         }
 

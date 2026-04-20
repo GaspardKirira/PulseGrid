@@ -10,6 +10,7 @@
 #include "HttpChecker.hpp"
 
 #include <chrono>
+#include <string>
 #include <string_view>
 
 namespace pulsegrid::infrastructure::checker
@@ -22,23 +23,13 @@ namespace pulsegrid::infrastructure::checker
     const auto started_at = steady_clock::now();
 
     Result result{};
-
     const std::string &value = url.value();
-
-    // -------------------------------------------------------
-    // MVP behavior
-    //
-    // This implementation defines a stable checker contract now,
-    // while keeping the internal logic simple. It can later be
-    // replaced by a real Vix HTTP client call without changing
-    // the rest of the application architecture.
-    // -------------------------------------------------------
 
     if (!url.is_http())
     {
       result.outcome = Outcome::Down;
-      result.error_message = "unsupported URL scheme";
       result.status_code = 0;
+      result.error_message = "unsupported URL scheme";
     }
     else if (is_localhost_url(value))
     {
@@ -58,12 +49,17 @@ namespace pulsegrid::infrastructure::checker
       result.status_code = 503;
       result.error_message = "service unavailable";
     }
-    else
+    else if (starts_with(value, "http://") || starts_with(value, "https://"))
     {
-      // Default MVP optimistic behavior for valid HTTP URLs.
       result.outcome = Outcome::Up;
       result.status_code = 200;
       result.error_message.clear();
+    }
+    else
+    {
+      result.outcome = Outcome::Down;
+      result.status_code = 0;
+      result.error_message = "invalid HTTP URL";
     }
 
     const auto ended_at = steady_clock::now();
@@ -79,8 +75,10 @@ namespace pulsegrid::infrastructure::checker
     {
     case Outcome::Up:
       return "up";
+
     case Outcome::Down:
       return "down";
+
     case Outcome::Degraded:
       return "degraded";
     }
@@ -94,7 +92,9 @@ namespace pulsegrid::infrastructure::checker
            value.find("://localhost") != std::string::npos;
   }
 
-  bool HttpChecker::starts_with(std::string_view text, std::string_view prefix) noexcept
+  bool HttpChecker::starts_with(
+      std::string_view text,
+      std::string_view prefix) noexcept
   {
     return text.size() >= prefix.size() &&
            text.substr(0, prefix.size()) == prefix;

@@ -21,13 +21,21 @@ namespace pulsegrid::presentation::http
 {
   namespace
   {
+    /**
+     * @brief Send a JSON error response.
+     *
+     * @param res HTTP response.
+     * @param status HTTP status code.
+     * @param message Error message.
+     */
     void send_error(vix::Response &res, int status, const std::string &message)
     {
       namespace J = vix::json;
 
-      res.status(status).json(J::o(
-          "ok", false,
-          "error", message));
+      res.status(status).json(
+          J::o(
+              "ok", false,
+              "error", message));
     }
   } // namespace
 

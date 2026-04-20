@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include <pulsegrid/domain/shared/Url.hpp>
 
@@ -49,11 +50,23 @@ namespace pulsegrid::infrastructure::checker
      */
     [[nodiscard]] Result check(const pulsegrid::domain::shared::Url &url) const;
 
+    /**
+     * @brief Convert a checker outcome to its string representation.
+     */
     [[nodiscard]] static std::string to_string(Outcome outcome);
 
   private:
+    /**
+     * @brief Return true if the target URL points to localhost.
+     */
     [[nodiscard]] static bool is_localhost_url(const std::string &value) noexcept;
-    [[nodiscard]] static bool starts_with(std::string_view text, std::string_view prefix) noexcept;
+
+    /**
+     * @brief Return true if a text starts with the given prefix.
+     */
+    [[nodiscard]] static bool starts_with(
+        std::string_view text,
+        std::string_view prefix) noexcept;
   };
 
 } // namespace pulsegrid::infrastructure::checker

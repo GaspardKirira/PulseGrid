@@ -11,7 +11,6 @@
 
 #include <exception>
 #include <string>
-#include <vector>
 
 #include <pulsegrid/domain/shared/EntityId.hpp>
 #include <pulsegrid/presentation/dto/CreateMonitorRequest.hpp>
@@ -24,13 +23,21 @@ namespace pulsegrid::presentation::http
 {
   namespace
   {
+    /**
+     * @brief Send a JSON error response.
+     *
+     * @param res HTTP response object.
+     * @param status HTTP status code.
+     * @param message Error message.
+     */
     void send_error(vix::Response &res, int status, const std::string &message)
     {
       namespace J = vix::json;
 
-      res.status(status).json(J::o(
-          "ok", false,
-          "error", message));
+      res.status(status).json(
+          J::o(
+              "ok", false,
+              "error", message));
     }
   } // namespace
 
@@ -50,19 +57,18 @@ namespace pulsegrid::presentation::http
               {
                 const auto monitors = monitor_service_.list_monitors();
 
-                std::vector<J::token> items;
-                items.reserve(monitors.size());
-
+                J::Json items = J::Json::array();
                 for (const auto &monitor : monitors)
                 {
-                  items.emplace_back(
+                  items.push_back(
                       pulsegrid::presentation::dto::MonitorResponse::from_domain(monitor));
                 }
 
-                res.status(200).json(J::o(
-                    "ok", true,
-                    "count", static_cast<long long>(items.size()),
-                    "data", J::array(std::move(items))));
+                res.status(200).json(
+                    J::o(
+                        "ok", true,
+                        "count", static_cast<long long>(monitors.size()),
+                        "data", items));
               }
               catch (const std::exception &e)
               {
@@ -221,10 +227,11 @@ namespace pulsegrid::presentation::http
                   return;
                 }
 
-                res.status(200).json(J::o(
-                    "ok", true,
-                    "deleted", true,
-                    "id", id.value()));
+                res.status(200).json(
+                    J::o(
+                        "ok", true,
+                        "deleted", true,
+                        "id", id.value()));
               }
               catch (const std::exception &e)
               {

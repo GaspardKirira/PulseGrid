@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PulseGrid</title>
 
-  <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="/app.css" />
 
   <style>
     body {
@@ -28,6 +28,11 @@
       margin: 0;
       font-size: 18px;
       font-weight: 600;
+    }
+
+    h2 {
+      margin-top: 28px;
+      font-size: 18px;
     }
 
     .container {
@@ -55,6 +60,7 @@
     .status {
       font-size: 14px;
       margin-top: 8px;
+      font-weight: 600;
     }
 
     .up {
@@ -65,8 +71,13 @@
       color: #ef4444;
     }
 
-    .unknown {
+    .degraded {
       color: #facc15;
+    }
+
+    .paused,
+    .unknown {
+      color: #cbd5e1;
     }
 
     .meta {
@@ -86,6 +97,21 @@
       border-radius: 6px;
       font-size: 12px;
     }
+
+    .summary-box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      color: #cbd5e1;
+    }
+
+    .empty {
+      color: #94a3b8;
+      font-size: 14px;
+      padding: 12px 0;
+    }
   </style>
 </head>
 
@@ -98,10 +124,9 @@
   </header>
 
   <div class="container">
-    <div id="summary" class="meta">Loading summary...</div>
+    <div id="summary" class="summary-box">Loading summary...</div>
 
     <h2>Monitors</h2>
-
     <div id="grid" class="grid"></div>
   </div>
 
@@ -115,7 +140,9 @@
         const res = await fetch("/_meta");
         const data = await res.json();
         metaVersion.textContent = "v" + (data.version || "?");
-      } catch {}
+      } catch {
+        metaVersion.textContent = "v?";
+      }
     }
 
     async function loadSummary() {
@@ -123,32 +150,47 @@
         const res = await fetch("/api/status/summary");
         const data = await res.json();
 
-        if (!data.ok) {
-          summary.textContent = "Failed to load summary";
-          return;
-        }
-
         summary.textContent =
-          "Total: " + data.total +
-          " • Up: " + data.up +
-          " • Down: " + data.down;
+          "Total: " + (data.total_monitors ?? 0) +
+          " • Up: " + (data.up_monitors ?? 0) +
+          " • Down: " + (data.down_monitors ?? 0) +
+          " • Degraded: " + (data.degraded_monitors ?? 0) +
+          " • Paused: " + (data.paused_monitors ?? 0) +
+          " • Open incidents: " + (data.open_incidents ?? 0);
       } catch {
         summary.textContent = "Error loading summary";
       }
     }
 
+    function statusClass(status) {
+      switch ((status || "").toLowerCase()) {
+        case "up":
+          return "up";
+        case "down":
+          return "down";
+        case "degraded":
+          return "degraded";
+        case "paused":
+          return "paused";
+        default:
+          return "unknown";
+      }
+    }
+
     function renderMonitor(m) {
-      const statusClass =
-        m.status === "up" ? "up" :
-        m.status === "down" ? "down" :
-        "unknown";
+      const status = (m.status || "unknown").toLowerCase();
+      const slugPart = m.slug
+        ? `<div class="meta" style="margin-top: 6px;">Slug: <a href="/status/${encodeURIComponent(m.slug)}" style="color:#93c5fd;text-decoration:none;">${m.slug}</a></div>`
+        : "";
 
       return `
         <div class="card">
-          <h3>${m.name}</h3>
-          <div class="meta">${m.url}</div>
-          <div class="status ${statusClass}">
-            ${m.status.toUpperCase()}
+          <h3>${m.name || "Unnamed monitor"}</h3>
+          <div class="meta">${m.url || ""}</div>
+          <div class="meta" style="margin-top: 6px;">Interval: ${m.interval_seconds ?? "?"}s</div>
+          ${slugPart}
+          <div class="status ${statusClass(status)}">
+            ${status.toUpperCase()}
           </div>
         </div>
       `;
@@ -160,13 +202,20 @@
         const data = await res.json();
 
         if (!data.ok) {
-          grid.innerHTML = "<p>Failed to load monitors</p>";
+          grid.innerHTML = "<p class='empty'>Failed to load monitors</p>";
           return;
         }
 
-        grid.innerHTML = data.data.map(renderMonitor).join("");
+        const monitors = Array.isArray(data.data) ? data.data : [];
+
+        if (!monitors.length) {
+          grid.innerHTML = "<p class='empty'>No monitors yet.</p>";
+          return;
+        }
+
+        grid.innerHTML = monitors.map(renderMonitor).join("");
       } catch {
-        grid.innerHTML = "<p>Error loading monitors</p>";
+        grid.innerHTML = "<p class='empty'>Error loading monitors</p>";
       }
     }
 
@@ -177,7 +226,6 @@
     }
 
     init();
-
     setInterval(loadMonitors, 5000);
     setInterval(loadSummary, 5000);
   </script>

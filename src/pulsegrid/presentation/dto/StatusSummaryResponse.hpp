@@ -26,6 +26,12 @@ namespace pulsegrid::presentation::dto
 {
   struct StatusSummaryResponse
   {
+    /**
+     * @brief Convert a single monitor status view into JSON.
+     *
+     * @param view Monitor status view.
+     * @return JSON representation of the monitor status view.
+     */
     [[nodiscard]] static pulsegrid::support::Json from_view(
         const pulsegrid::application::services::StatusService::MonitorStatusView &view)
     {
@@ -89,17 +95,22 @@ namespace pulsegrid::presentation::dto
           "open_incident", open_incident_json);
     }
 
+    /**
+     * @brief Convert a global status summary into JSON.
+     *
+     * @param summary Global status summary.
+     * @return JSON representation of the summary.
+     */
     [[nodiscard]] static pulsegrid::support::Json from_summary(
         const pulsegrid::application::services::StatusService::StatusSummary &summary)
     {
       namespace J = vix::json;
 
-      std::vector<J::token> monitors;
-      monitors.reserve(summary.monitors.size());
+      J::Json monitors = J::Json::array();
 
       for (const auto &view : summary.monitors)
       {
-        monitors.emplace_back(from_view(view));
+        monitors.push_back(from_view(view));
       }
 
       return J::o(
@@ -109,7 +120,7 @@ namespace pulsegrid::presentation::dto
           "degraded_monitors", static_cast<long long>(summary.degraded_monitors),
           "paused_monitors", static_cast<long long>(summary.paused_monitors),
           "open_incidents", static_cast<long long>(summary.open_incidents),
-          "monitors", J::array(std::move(monitors)));
+          "monitors", monitors);
     }
   };
 

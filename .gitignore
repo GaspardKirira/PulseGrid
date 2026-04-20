@@ -16,3 +16,4 @@ CMakeCache.txt
 cmake-build-*/
 cmd.md
 .env
+storage/
