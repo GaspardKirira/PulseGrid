@@ -15,10 +15,10 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include <vix/json/Simple.hpp>
 #include <vix/websocket/App.hpp>
 #include <vix/websocket/session.hpp>
 
@@ -71,6 +71,12 @@ namespace pulsegrid::presentation::ws
       std::unordered_set<std::string> monitor_slugs;
     };
 
+    struct SessionEntry
+    {
+      std::shared_ptr<vix::websocket::Session> session;
+      SubscriptionState subscriptions;
+    };
+
   private:
     void handle_open(vix::websocket::Session &session);
     void handle_close(vix::websocket::Session &session);
@@ -100,21 +106,19 @@ namespace pulsegrid::presentation::ws
         vix::websocket::Session &session,
         const std::string &slug);
 
-    [[nodiscard]] SubscriptionState &subscription_state(vix::websocket::Session &session);
+    [[nodiscard]] SubscriptionState *find_subscription_state(
+        vix::websocket::Session &session);
+
+    [[nodiscard]] const SubscriptionState *find_subscription_state(
+        vix::websocket::Session &session) const;
 
     [[nodiscard]] static std::string payload_string(
         const vix::json::kvs &payload,
         const std::string &key);
 
-    template <typename Predicate>
-    void broadcast_if(
-        const std::string &payload,
-        Predicate predicate);
-
   private:
     vix::websocket::App &ws_app_;
-    std::vector<vix::websocket::Session *> sessions_;
-    std::unordered_map<vix::websocket::Session *, SubscriptionState> subscriptions_;
+    std::vector<SessionEntry> sessions_;
     mutable std::mutex sessions_mutex_;
   };
 

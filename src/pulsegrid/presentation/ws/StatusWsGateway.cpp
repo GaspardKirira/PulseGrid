@@ -12,9 +12,9 @@
 #include <algorithm>
 #include <string>
 #include <utility>
+#include <variant>
 
 #include <pulsegrid/support/Constants.hpp>
-#include <vix/json/Simple.hpp>
 
 namespace pulsegrid::presentation::ws
 {
@@ -22,6 +22,11 @@ namespace pulsegrid::presentation::ws
   {
     void safe_send(vix::websocket::Session &session, const std::string &payload)
     {
+      if (!session.is_open())
+      {
+        return;
+      }
+
       try
       {
         session.send_text(payload);
@@ -68,14 +73,14 @@ namespace pulsegrid::presentation::ws
 
     prune_closed_sessions();
 
-    for (auto *session : sessions_)
+    for (auto &entry : sessions_)
     {
-      if (session == nullptr)
+      if (!entry.session || !entry.session->is_open())
       {
         continue;
       }
 
-      safe_send(*session, payload);
+      safe_send(*entry.session, payload);
     }
   }
 
@@ -85,22 +90,16 @@ namespace pulsegrid::presentation::ws
 
     prune_closed_sessions();
 
-    for (auto *session : sessions_)
+    for (auto &entry : sessions_)
     {
-      if (session == nullptr)
+      if (!entry.session || !entry.session->is_open())
       {
         continue;
       }
 
-      const auto it = subscriptions_.find(session);
-      if (it == subscriptions_.end())
+      if (entry.subscriptions.dashboard)
       {
-        continue;
-      }
-
-      if (it->second.dashboard)
-      {
-        safe_send(*session, payload);
+        safe_send(*entry.session, payload);
       }
     }
   }
@@ -113,22 +112,16 @@ namespace pulsegrid::presentation::ws
 
     prune_closed_sessions();
 
-    for (auto *session : sessions_)
+    for (auto &entry : sessions_)
     {
-      if (session == nullptr)
+      if (!entry.session || !entry.session->is_open())
       {
         continue;
       }
 
-      const auto it = subscriptions_.find(session);
-      if (it == subscriptions_.end())
+      if (entry.subscriptions.monitor_ids.find(monitor_id) != entry.subscriptions.monitor_ids.end())
       {
-        continue;
-      }
-
-      if (it->second.monitor_ids.find(monitor_id) != it->second.monitor_ids.end())
-      {
-        safe_send(*session, payload);
+        safe_send(*entry.session, payload);
       }
     }
   }
@@ -141,22 +134,16 @@ namespace pulsegrid::presentation::ws
 
     prune_closed_sessions();
 
-    for (auto *session : sessions_)
+    for (auto &entry : sessions_)
     {
-      if (session == nullptr)
+      if (!entry.session || !entry.session->is_open())
       {
         continue;
       }
 
-      const auto it = subscriptions_.find(session);
-      if (it == subscriptions_.end())
+      if (entry.subscriptions.monitor_slugs.find(slug) != entry.subscriptions.monitor_slugs.end())
       {
-        continue;
-      }
-
-      if (it->second.monitor_slugs.find(slug) != it->second.monitor_slugs.end())
-      {
-        safe_send(*session, payload);
+        safe_send(*entry.session, payload);
       }
     }
   }
@@ -164,15 +151,40 @@ namespace pulsegrid::presentation::ws
   std::size_t StatusWsGateway::connection_count() const
   {
     std::lock_guard<std::mutex> lock(sessions_mutex_);
-    return sessions_.size();
+
+    std::size_t count = 0;
+    for (const auto &entry : sessions_)
+    {
+      if (entry.session && entry.session->is_open())
+      {
+        ++count;
+      }
+    }
+
+    return count;
   }
 
   void StatusWsGateway::handle_open(vix::websocket::Session &session)
   {
     std::lock_guard<std::mutex> lock(sessions_mutex_);
 
-    sessions_.push_back(&session);
-    subscriptions_.try_emplace(&session);
+    auto shared = session.shared_from_this();
+
+    const auto it = std::find_if(
+        sessions_.begin(),
+        sessions_.end(),
+        [&session](const SessionEntry &entry)
+        {
+          return entry.session.get() == &session;
+        });
+
+    if (it == sessions_.end())
+    {
+      sessions_.push_back(SessionEntry{
+          .session = std::move(shared),
+          .subscriptions = SubscriptionState{},
+      });
+    }
 
     safe_send(session, R"({"type":"ws.connected","data":{"ok":true}})");
   }
@@ -182,10 +194,14 @@ namespace pulsegrid::presentation::ws
     std::lock_guard<std::mutex> lock(sessions_mutex_);
 
     sessions_.erase(
-        std::remove(sessions_.begin(), sessions_.end(), &session),
+        std::remove_if(
+            sessions_.begin(),
+            sessions_.end(),
+            [&session](const SessionEntry &entry)
+            {
+              return !entry.session || entry.session.get() == &session;
+            }),
         sessions_.end());
-
-    subscriptions_.erase(&session);
   }
 
   void StatusWsGateway::handle_message(
@@ -281,30 +297,30 @@ namespace pulsegrid::presentation::ws
   void StatusWsGateway::prune_closed_sessions()
   {
     sessions_.erase(
-        std::remove(sessions_.begin(), sessions_.end(), nullptr),
+        std::remove_if(
+            sessions_.begin(),
+            sessions_.end(),
+            [](const SessionEntry &entry)
+            {
+              return !entry.session || !entry.session->is_open();
+            }),
         sessions_.end());
-
-    for (auto it = subscriptions_.begin(); it != subscriptions_.end();)
-    {
-      if (it->first == nullptr)
-      {
-        it = subscriptions_.erase(it);
-      }
-      else
-      {
-        ++it;
-      }
-    }
   }
 
   void StatusWsGateway::subscribe_dashboard(vix::websocket::Session &session)
   {
-    subscription_state(session).dashboard = true;
+    if (auto *state = find_subscription_state(session))
+    {
+      state->dashboard = true;
+    }
   }
 
   void StatusWsGateway::unsubscribe_dashboard(vix::websocket::Session &session)
   {
-    subscription_state(session).dashboard = false;
+    if (auto *state = find_subscription_state(session))
+    {
+      state->dashboard = false;
+    }
   }
 
   void StatusWsGateway::subscribe_monitor_id(
@@ -316,7 +332,10 @@ namespace pulsegrid::presentation::ws
       return;
     }
 
-    subscription_state(session).monitor_ids.insert(monitor_id);
+    if (auto *state = find_subscription_state(session))
+    {
+      state->monitor_ids.insert(monitor_id);
+    }
   }
 
   void StatusWsGateway::unsubscribe_monitor_id(
@@ -328,7 +347,10 @@ namespace pulsegrid::presentation::ws
       return;
     }
 
-    subscription_state(session).monitor_ids.erase(monitor_id);
+    if (auto *state = find_subscription_state(session))
+    {
+      state->monitor_ids.erase(monitor_id);
+    }
   }
 
   void StatusWsGateway::subscribe_monitor_slug(
@@ -340,7 +362,10 @@ namespace pulsegrid::presentation::ws
       return;
     }
 
-    subscription_state(session).monitor_slugs.insert(slug);
+    if (auto *state = find_subscription_state(session))
+    {
+      state->monitor_slugs.insert(slug);
+    }
   }
 
   void StatusWsGateway::unsubscribe_monitor_slug(
@@ -352,13 +377,48 @@ namespace pulsegrid::presentation::ws
       return;
     }
 
-    subscription_state(session).monitor_slugs.erase(slug);
+    if (auto *state = find_subscription_state(session))
+    {
+      state->monitor_slugs.erase(slug);
+    }
   }
 
-  StatusWsGateway::SubscriptionState &StatusWsGateway::subscription_state(
+  StatusWsGateway::SubscriptionState *StatusWsGateway::find_subscription_state(
       vix::websocket::Session &session)
   {
-    return subscriptions_[&session];
+    auto it = std::find_if(
+        sessions_.begin(),
+        sessions_.end(),
+        [&session](SessionEntry &entry)
+        {
+          return entry.session && entry.session.get() == &session;
+        });
+
+    if (it == sessions_.end())
+    {
+      return nullptr;
+    }
+
+    return &it->subscriptions;
+  }
+
+  const StatusWsGateway::SubscriptionState *StatusWsGateway::find_subscription_state(
+      vix::websocket::Session &session) const
+  {
+    auto it = std::find_if(
+        sessions_.begin(),
+        sessions_.end(),
+        [&session](const SessionEntry &entry)
+        {
+          return entry.session && entry.session.get() == &session;
+        });
+
+    if (it == sessions_.end())
+    {
+      return nullptr;
+    }
+
+    return &it->subscriptions;
   }
 
   std::string StatusWsGateway::payload_string(

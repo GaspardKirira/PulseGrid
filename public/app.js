@@ -298,3 +298,61 @@ async function init() {
 document.addEventListener("DOMContentLoaded", () => {
   init();
 });
+
+function showFormMessage(message, isError = false) {
+  const box = qs("#form-message");
+  if (!box) return;
+
+  box.textContent = message;
+  box.style.color = isError ? "#ef4444" : "#22c55e";
+}
+
+async function handleCreateMonitor(event) {
+  event.preventDefault();
+
+  const name = qs("#monitor-name").value.trim();
+  const slug = qs("#monitor-slug").value.trim();
+  const url = qs("#monitor-url").value.trim();
+  const interval = parseInt(qs("#monitor-interval").value, 10) || 30;
+
+  try {
+    const res = await fetch(API.monitors, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        slug,
+        url,
+        interval_seconds: interval,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to create monitor");
+    }
+
+    showFormMessage("Monitor created successfully");
+
+    // reset form
+    qs("#create-monitor-form").reset();
+
+    // 👉 update UI immédiatement
+    if (data) {
+      upsertMonitor(data);
+      updateSummaryFromMonitors();
+    }
+  } catch (e) {
+    showFormMessage(e.message, true);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const form = qs("#create-monitor-form");
+  if (form) {
+    form.addEventListener("submit", handleCreateMonitor);
+  }
+});
