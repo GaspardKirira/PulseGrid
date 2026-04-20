@@ -1,116 +1,137 @@
 # PulseGrid
 
-Minimal Vix.cpp application.
+**Real-time service monitoring. Built with modern C++.**
 
-## Quick start
+PulseGrid is a lightweight monitoring application designed to demonstrate how to build a real-world, production-style system using **Vix.cpp**.
+
+It focuses on clarity, reliability, and architecture, not complexity.
+
+## What is PulseGrid?
+
+PulseGrid lets you:
+
+- Monitor HTTP endpoints
+- Track uptime and response time
+- Detect incidents automatically
+- Expose a real-time status dashboard
+- Stream updates via WebSocket
+
+It is intentionally simple, but architecturally serious.
+
+## Why this project exists
+
+PulseGrid is not just another app.
+
+It is a **reference implementation** showing:
+
+- How to build a clean C++ backend
+- How to structure a real application (`domain -> application -> infrastructure -> presentation`)
+- How to use **Vix.cpp in production conditions**
+- How to remove friction from CMake and setup
+
+No boilerplate. No hidden magic. Just clear systems.
+
+## Architecture
+
+PulseGrid follows a strict layered architecture:
+
+```text
+Domain         -> Business rules (pure C++)
+Application    -> Use cases / services
+Infrastructure -> DB, HTTP checks, runtime
+Presentation   -> HTTP API + WebSocket
+App            -> Bootstrap + wiring
+```
+
+Key principles:
+
+- Dependency inversion (ports & adapters)
+- Explicit boundaries
+- Testable components
+- Minimal coupling
+
+## Tech stack
+
+- **C++20**
+- **Vix.cpp runtime**
+- SQLite (default)
+- HTTP checks + scheduler
+- WebSocket for real-time updates
+- Zero external frameworks
+
+## Project structure
+
+```text
+src/pulsegrid/
+├── app/              -> bootstrap & wiring
+├── domain/           -> core logic
+├── application/      -> services & ports
+├── infrastructure/   -> DB, events, checker
+└── presentation/     -> HTTP + WS layer
+```
+
+## Getting started
+
+### 1. Build
 
 ```bash
-cd PulseGrid
-cp .env.example .env
 vix build
+```
+
+### 2. Run
+
+```bash
 vix run
 ```
 
-Then open:
+### 3. Open
 
-```
+```text
 http://localhost:8080
+http://localhost:8080/status
 ```
 
-## Dependencies
-
-This project uses a `vix.json` manifest.
-
-Workflow:
-
-- `vix add <pkg>` → add dependency
-- `vix install` → install dependencies
-- `vix.lock` → ensures reproducible builds
-
-Example:
+## Tests
 
 ```bash
-vix add gk/json@^1.0.0
-vix install
+vix tests
 ```
 
-## Tasks
+## Database
 
-Run project tasks:
+- Default: SQLite
+- Automatically initialized
+- Migrations applied on startup
 
-```bash
-vix task <name>
-```
+No manual setup required.
 
-Common tasks:
+## Real-time updates
 
-```bash
-vix task dev
-vix task test
-vix task ci
-```
+PulseGrid pushes updates using WebSocket:
 
-Edit `vix.json` to customize tasks and pipelines.
+- monitor status changes
+- incidents
+- live checks
 
-## Configuration
+## What this demonstrates
 
-Vix uses `.env` files for configuration.
+PulseGrid proves that you can:
 
-Start by copying the example:
+- Build backend systems in C++ without friction
+- Use modern architecture patterns cleanly
+- Replace heavy stacks with a minimal runtime
+- Ship something real, not just demos
 
-```bash
-cp .env.example .env
-```
+## Philosophy
 
-Example:
+Build real systems. Keep them simple. Make them predictable.
 
-```env
-SERVER_PORT=8080
-DATABASE_ENGINE=mysql
-DATABASE_DEFAULT_HOST=127.0.0.1
-DATABASE_DEFAULT_PORT=3306
-DATABASE_DEFAULT_USER=root
-DATABASE_DEFAULT_PASSWORD=
-DATABASE_DEFAULT_NAME=appdb
-LOGGING_ASYNC=true
-WAF_MODE=basic
-```
+## Author
 
-## Using configuration in code
+Gaspard Kirira \
+https://github.com/GaspardKirira
 
-```cpp
-#include <vix.hpp>
-using namespace vix;
+## License
 
-int main()
-{
-  config::Config cfg{".env"};
+MIT
 
-  App app;
-  app.get("/", [](Request&, Response& res) {
-    res.send("Hello world");
-  });
-
-  app.run(cfg.getServerPort());
-}
-```
-
-## Environment mapping
-
-Vix maps config keys to environment variables:
-
-- `server.port` → `SERVER_PORT`
-- `database.default.host` → `DATABASE_DEFAULT_HOST`
-- `database.default.name` → `DATABASE_DEFAULT_NAME`
-
-This keeps the C++ API clean and environment-driven.
-
-## Environment layers
-
-You can use multiple env files:
-
-- `.env`
-- `.env.local`
-- `.env.production`
-
-Use `.env` for development and environment-specific files for deployment.

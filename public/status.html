@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseGrid Status</title>
+
+  <link rel="stylesheet" href="/app.css" />
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+    }
+
+    .subtle {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .status-pill {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-up {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .status-down {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .status-degraded {
+      background: rgba(250, 204, 21, 0.15);
+      color: #facc15;
+    }
+
+    .status-unknown,
+    .status-paused {
+      background: rgba(148, 163, 184, 0.15);
+      color: #cbd5e1;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+    }
+
+    .value {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .label {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .incident {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .incident h2 {
+      margin-top: 0;
+      color: #fca5a5;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error-box {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #fecaca;
+      border-radius: 12px;
+      padding: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <strong>PulseGrid</strong>
+    <a href="/">← Dashboard</a>
+  </header>
+
+  <main class="container">
+    <div id="error-box" class="error-box hidden"></div>
+
+    <section id="hero" class="hero hidden">
+      <h1 id="monitor-name">Monitor</h1>
+      <div id="monitor-url" class="subtle"></div>
+      <div id="monitor-meta" class="subtle" style="margin-top: 6px;"></div>
+      <div id="monitor-status-pill" class="status-pill">UNKNOWN</div>
+    </section>
+
+    <section id="metrics" class="grid hidden">
+      <div class="card">
+        <h2>Latest check</h2>
+        <div id="latest-check-status" class="value">—</div>
+        <div class="label">Current check result</div>
+      </div>
+
+      <div class="card">
+        <h2>Response time</h2>
+        <div id="response-time" class="value">—</div>
+        <div class="label">Latest response time</div>
+      </div>
+
+      <div class="card">
+        <h2>Checked at</h2>
+        <div id="checked-at" class="value">—</div>
+        <div class="label">Last recorded check</div>
+      </div>
+    </section>
+
+    <section id="incident-box" class="incident hidden">
+      <h2>Open incident</h2>
+      <div id="incident-message" style="font-weight: 600; margin-bottom: 8px;"></div>
+      <div id="incident-started" class="subtle"></div>
+    </section>
+  </main>
+
+  <script>
+    function getSlugFromPath() {
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      return parts.length >= 2 ? decodeURIComponent(parts[1]) : "";
+    }
+
+    function formatTimestamp(ms) {
+      if (ms === null || ms === undefined) return "—";
+      const date = new Date(ms);
+      if (Number.isNaN(date.getTime())) return "—";
+      return date.toLocaleString();
+    }
+
+    function statusClass(status) {
+      switch ((status || "").toLowerCase()) {
+        case "up":
+          return "status-up";
+        case "down":
+          return "status-down";
+        case "degraded":
+          return "status-degraded";
+        case "paused":
+          return "status-paused";
+        default:
+          return "status-unknown";
+      }
+    }
+
+    function showError(message) {
+      const box = document.getElementById("error-box");
+      box.textContent = message;
+      box.classList.remove("hidden");
+    }
+
+    function hideError() {
+      document.getElementById("error-box").classList.add("hidden");
+    }
+
+    function renderStatus(view) {
+      const monitor = view.monitor || {};
+      const latestCheck = view.latest_check || null;
+      const openIncident = view.open_incident || null;
+
+      const hero = document.getElementById("hero");
+      const metrics = document.getElementById("metrics");
+      const incidentBox = document.getElementById("incident-box");
+
+      document.title = `${monitor.name || "Monitor"} · PulseGrid Status`;
+
+      document.getElementById("monitor-name").textContent = monitor.name || "Unnamed monitor";
+      document.getElementById("monitor-url").textContent = monitor.url || "";
+      document.getElementById("monitor-meta").textContent =
+        `Slug: ${monitor.slug || "—"} • Interval: ${monitor.interval_seconds ?? "—"}s`;
+
+      const pill = document.getElementById("monitor-status-pill");
+      const statusText = (monitor.status || "unknown").toUpperCase();
+      pill.textContent = statusText;
+      pill.className = `status-pill ${statusClass(monitor.status)}`;
+
+      document.getElementById("latest-check-status").textContent =
+        latestCheck?.status ? latestCheck.status.toUpperCase() : "—";
+
+      document.getElementById("response-time").textContent =
+        latestCheck?.response_time_ms !== null && latestCheck?.response_time_ms !== undefined
+          ? `${latestCheck.response_time_ms} ms`
+          : "—";
+
+      document.getElementById("checked-at").textContent =
+        latestCheck?.checked_at_ms ? formatTimestamp(latestCheck.checked_at_ms) : "—";
+
+      if (openIncident) {
+        document.getElementById("incident-message").textContent =
+          openIncident.message || "Incident open";
+        document.getElementById("incident-started").textContent =
+          `Started at: ${formatTimestamp(openIncident.started_at_ms)}`;
+        incidentBox.classList.remove("hidden");
+      } else {
+        incidentBox.classList.add("hidden");
+      }
+
+      hero.classList.remove("hidden");
+      metrics.classList.remove("hidden");
+    }
+
+    async function loadStatus() {
+      hideError();
+
+      const slug = getSlugFromPath();
+      if (!slug) {
+        showError("Missing monitor slug in URL.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/status/${encodeURIComponent(slug)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          showError(data?.error || "Failed to load public status.");
+          return;
+        }
+
+        renderStatus(data);
+      } catch {
+        showError("Network error while loading status.");
+      }
+    }
+
+    loadStatus();
+    setInterval(loadStatus, 5000);
+  </script>
+</body>
+</html>

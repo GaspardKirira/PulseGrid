@@ -1,14 +1,16 @@
-#include <vix.hpp>
-using namespace vix;
+/**
+ *
+ *  @file main.cpp
+ *  @author Gaspard Kirira
+ *
+ *  PulseGrid
+ *
+ */
+
+#include <pulsegrid/app/AppBootstrap.hpp>
 
 int main()
 {
-  App app;
-
-  // GET /
-  app.get("/", [](Request&, Response& res) {
-    res.send("Hello world");
-  });
-
-  app.run(8080);
+  pulsegrid::app::AppBootstrap bootstrap;
+  return bootstrap.run();
 }
