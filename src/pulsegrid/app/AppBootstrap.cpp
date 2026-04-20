@@ -35,18 +35,9 @@ namespace pulsegrid::app
       pulsegrid::infrastructure::runtime::AppLogger::set_info_level();
       pulsegrid::infrastructure::runtime::AppLogger::set_json_format();
 
-      pulsegrid::infrastructure::runtime::AppLogger::infof(
-          "starting PulseGrid",
-          "app", std::string(pulsegrid::support::constants::app_name),
-          "version", std::string(pulsegrid::support::constants::app_version));
-
       const int port = config_->getInt(
           std::string(pulsegrid::support::constants::env_http_port),
           pulsegrid::support::constants::default_http_port);
-
-      pulsegrid::infrastructure::runtime::AppLogger::infof(
-          "http server listening",
-          "port", port);
 
       if (!http_app_)
       {
@@ -69,15 +60,7 @@ namespace pulsegrid::app
       {
         try
         {
-          const auto result = check_scheduler_->tick();
-
-          pulsegrid::infrastructure::runtime::AppLogger::infof(
-              "scheduler tick completed",
-              "processed", static_cast<long long>(result.processed),
-              "skipped", static_cast<long long>(result.skipped),
-              "succeeded", static_cast<long long>(result.succeeded),
-              "degraded", static_cast<long long>(result.degraded),
-              "failed", static_cast<long long>(result.failed));
+          (void)check_scheduler_->tick();
         }
         catch (const std::exception &e)
         {
@@ -250,18 +233,6 @@ namespace pulsegrid::app
 
     middleware_registry_->register_all(*http_app_);
     route_registry_->register_all(*http_app_);
-
-    auto r = http_app_->router();
-    if (r)
-    {
-      for (const auto &route : r->routes())
-      {
-        pulsegrid::infrastructure::runtime::AppLogger::infof(
-            "registered route",
-            "method", route.method,
-            "path", route.path);
-      }
-    }
   }
 
   void AppBootstrap::initialize_ws_app()
@@ -272,8 +243,6 @@ namespace pulsegrid::app
     }
 
     status_ws_gateway_->register_routes();
-
-    pulsegrid::infrastructure::runtime::AppLogger::info("websocket routes registered");
   }
 
 } // namespace pulsegrid::app

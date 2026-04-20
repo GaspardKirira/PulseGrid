@@ -22,11 +22,11 @@ It is intentionally simple, but architecturally serious.
 
 PulseGrid is not just another app.
 
-It is a **reference implementation** showing:
+It is a reference implementation showing:
 
 - How to build a clean C++ backend
 - How to structure a real application (`domain -> application -> infrastructure -> presentation`)
-- How to use **Vix.cpp in production conditions**
+- How to use Vix.cpp in production conditions
 - How to remove friction from CMake and setup
 
 No boilerplate. No hidden magic. Just clear systems.
@@ -52,8 +52,8 @@ Key principles:
 
 ## Tech stack
 
-- **C++20**
-- **Vix.cpp runtime**
+- C++20
+- Vix.cpp runtime
 - SQLite (default)
 - HTTP checks + scheduler
 - WebSocket for real-time updates
@@ -84,12 +84,90 @@ vix build
 vix run
 ```
 
-### 3. Open
+### 3. Open the dashboard
 
 ```text
 http://localhost:8080
-http://localhost:8080/status
 ```
+
+## How to test the application
+
+### Option 1 - Use the UI (recommended)
+
+Open:
+
+```text
+http://localhost:8080
+```
+
+Use the "Create monitor" form.
+
+Add a test endpoint:
+
+- Name: Example
+- Slug: example
+- URL: https://example.com
+- Interval: 10
+
+Click **Create monitor**.
+
+You will see:
+
+- The monitor appear instantly
+- Status updates every few seconds
+- Real-time changes via WebSocket
+
+### Option 2 - Test via API (curl)
+
+Create a monitor:
+
+```bash
+curl -X POST http://localhost:8080/api/monitors \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Example",
+    "slug": "example",
+    "url": "https://example.com",
+    "interval_seconds": 10
+  }'
+```
+
+Get all monitors:
+
+```bash
+curl http://localhost:8080/api/monitors
+```
+
+Get global status:
+
+```bash
+curl http://localhost:8080/api/status/summary
+```
+
+### Option 3 - Test real-time (WebSocket)
+
+Connect:
+
+```text
+ws://localhost:9090/
+```
+
+Send:
+
+```json
+{
+  "type": "status.subscribe",
+  "payload": {}
+}
+```
+
+You will receive events such as:
+
+- `monitor.created`
+- `monitor.updated`
+- `check.recorded`
+- `incident.opened`
+- `incident.resolved`
 
 ## Tests
 
@@ -107,11 +185,13 @@ No manual setup required.
 
 ## Real-time updates
 
-PulseGrid pushes updates using WebSocket:
+PulseGrid uses WebSocket for live updates:
 
 - monitor status changes
 - incidents
-- live checks
+- health checks
+
+The UI updates automatically without refresh.
 
 ## What this demonstrates
 
@@ -128,7 +208,7 @@ Build real systems. Keep them simple. Make them predictable.
 
 ## Author
 
-Gaspard Kirira \
+Gaspard Kirira
 https://github.com/GaspardKirira
 
 ## License

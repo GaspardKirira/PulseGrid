@@ -28,16 +28,35 @@ function wsUrl() {
 
 async function fetchJson(url, opts = {}) {
   const res = await fetch(API.base + url, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(opts.headers || {}),
+    },
     ...opts,
   });
 
-  const data = await res.json();
+  let data = null;
+
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
   if (!res.ok) {
-    throw new Error(data?.error || "Request failed");
+    throw new Error(data?.error || data?.message || "Request failed");
   }
 
   return data;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function statusClass(status) {
@@ -55,13 +74,66 @@ function statusClass(status) {
   }
 }
 
+function normalizeMonitor(input) {
+  if (!input || typeof input !== "object") {
+    return null;
+  }
+
+  if (input.monitor && typeof input.monitor === "object") {
+    const latestCheck = input.latest_check ?? null;
+    const openIncident = input.open_incident ?? null;
+
+    return {
+      ...input.monitor,
+      latest_check: latestCheck,
+      open_incident: openIncident,
+      status: input.monitor.status || latestCheck?.status || "unknown",
+    };
+  }
+
+  return {
+    ...input,
+    latest_check: input.latest_check ?? null,
+    open_incident: input.open_incident ?? null,
+    status: input.status || "unknown",
+  };
+}
+
+function normalizeMonitorList(payload) {
+  if (Array.isArray(payload)) {
+    return payload.map(normalizeMonitor).filter(Boolean);
+  }
+
+  if (payload && Array.isArray(payload.data)) {
+    return payload.data.map(normalizeMonitor).filter(Boolean);
+  }
+
+  if (payload && Array.isArray(payload.monitors)) {
+    return payload.monitors.map(normalizeMonitor).filter(Boolean);
+  }
+
+  return [];
+}
+
+function showFormMessage(message, isError = false) {
+  const box = qs("#form-message");
+  if (!box) {
+    return;
+  }
+
+  box.textContent = message || "";
+  box.style.color = isError ? "#ef4444" : "#22c55e";
+}
+
 async function loadMeta() {
   const badge = qs("#meta-version");
-  if (!badge) return;
+  if (!badge) {
+    return;
+  }
 
   try {
     const data = await fetchJson(API.meta);
-    badge.textContent = "v" + (data.version || "?");
+    badge.textContent = "v" + (data?.version || "?");
   } catch {
     badge.textContent = "v?";
   }
@@ -69,21 +141,23 @@ async function loadMeta() {
 
 function renderSummary(data) {
   const summary = qs("#summary");
-  if (!summary) return;
+  if (!summary) {
+    return;
+  }
 
   summary.textContent =
     "Total: " +
-    (data.total_monitors ?? 0) +
+    (data?.total_monitors ?? 0) +
     " • Up: " +
-    (data.up_monitors ?? 0) +
+    (data?.up_monitors ?? 0) +
     " • Down: " +
-    (data.down_monitors ?? 0) +
+    (data?.down_monitors ?? 0) +
     " • Degraded: " +
-    (data.degraded_monitors ?? 0) +
+    (data?.degraded_monitors ?? 0) +
     " • Paused: " +
-    (data.paused_monitors ?? 0) +
+    (data?.paused_monitors ?? 0) +
     " • Open incidents: " +
-    (data.open_incidents ?? 0);
+    (data?.open_incidents ?? 0);
 }
 
 async function loadSummary() {
@@ -98,20 +172,43 @@ async function loadSummary() {
   }
 }
 
-function renderMonitor(m) {
-  const status = (m.status || "unknown").toLowerCase();
-  const slugPart = m.slug
-    ? `<div class="meta" style="margin-top: 6px;">Slug: <a href="/status/${encodeURIComponent(m.slug)}" style="color:#93c5fd;text-decoration:none;">${m.slug}</a></div>`
+function renderMonitor(monitor) {
+  const status = (monitor.status || "unknown").toLowerCase();
+  const latestCheck = monitor.latest_check;
+  const openIncident = monitor.open_incident;
+
+  const slugPart = monitor.slug
+    ? `<div class="meta" style="margin-top: 6px;">Slug: <a href="/status/${encodeURIComponent(
+        monitor.slug,
+      )}" style="color:#93c5fd;text-decoration:none;">${escapeHtml(monitor.slug)}</a></div>`
     : "";
 
+  const responseTimePart =
+    latestCheck && latestCheck.response_time_ms != null
+      ? `<div class="meta" style="margin-top: 6px;">Response time: ${escapeHtml(
+          latestCheck.response_time_ms,
+        )} ms</div>`
+      : "";
+
+  const incidentPart =
+    openIncident && openIncident.message
+      ? `<div class="meta" style="margin-top: 6px; color:#fca5a5;">Incident: ${escapeHtml(
+          openIncident.message,
+        )}</div>`
+      : "";
+
   return `
-    <div class="card" data-monitor-id="${m.id || ""}">
-      <h3>${m.name || "Unnamed monitor"}</h3>
-      <div class="meta">${m.url || ""}</div>
-      <div class="meta" style="margin-top: 6px;">Interval: ${m.interval_seconds ?? "?"}s</div>
+    <div class="card" data-monitor-id="${escapeHtml(monitor.id || "")}">
+      <h3>${escapeHtml(monitor.name || "Unnamed monitor")}</h3>
+      <div class="meta">${escapeHtml(monitor.url || "")}</div>
+      <div class="meta" style="margin-top: 6px;">Interval: ${escapeHtml(
+        monitor.interval_seconds ?? "?",
+      )}s</div>
       ${slugPart}
+      ${responseTimePart}
+      ${incidentPart}
       <div class="status ${statusClass(status)}">
-        ${status.toUpperCase()}
+        ${escapeHtml(status.toUpperCase())}
       </div>
     </div>
   `;
@@ -119,7 +216,9 @@ function renderMonitor(m) {
 
 function renderMonitors() {
   const grid = qs("#grid");
-  if (!grid) return;
+  if (!grid) {
+    return;
+  }
 
   if (!state.monitors.length) {
     grid.innerHTML = "<p class='empty'>No monitors yet.</p>";
@@ -132,30 +231,32 @@ function renderMonitors() {
 async function loadMonitors() {
   try {
     const data = await fetchJson(API.monitors);
-
-    if (!data.ok) {
-      throw new Error("Failed to load monitors");
-    }
-
-    state.monitors = Array.isArray(data.data) ? data.data : [];
+    state.monitors = normalizeMonitorList(data);
     renderMonitors();
   } catch (e) {
     const grid = qs("#grid");
     if (grid) {
-      grid.innerHTML = `<p class="empty">${e.message || "Error loading monitors"}</p>`;
+      grid.innerHTML = `<p class="empty">${escapeHtml(
+        e.message || "Error loading monitors",
+      )}</p>`;
     }
   }
 }
 
 function upsertMonitor(monitor) {
-  const index = state.monitors.findIndex((item) => item.id === monitor.id);
+  const normalized = normalizeMonitor(monitor);
+  if (!normalized) {
+    return;
+  }
+
+  const index = state.monitors.findIndex((item) => item.id === normalized.id);
 
   if (index === -1) {
-    state.monitors.push(monitor);
+    state.monitors.unshift(normalized);
   } else {
     state.monitors[index] = {
       ...state.monitors[index],
-      ...monitor,
+      ...normalized,
     };
   }
 
@@ -189,6 +290,10 @@ function updateSummaryFromMonitors() {
       default:
         break;
     }
+
+    if (monitor.open_incident) {
+      totals.open_incidents += 1;
+    }
   }
 
   renderSummary(totals);
@@ -215,7 +320,9 @@ function handleWsMessage(raw) {
           payload: {},
         }),
       );
-    } catch {}
+    } catch {
+      // ignore
+    }
     return;
   }
 
@@ -288,39 +395,34 @@ function connectWebSocket() {
   }
 }
 
-async function init() {
-  await loadMeta();
-  await loadSummary();
-  await loadMonitors();
-  connectWebSocket();
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  init();
-});
-
-function showFormMessage(message, isError = false) {
-  const box = qs("#form-message");
-  if (!box) return;
-
-  box.textContent = message;
-  box.style.color = isError ? "#ef4444" : "#22c55e";
-}
-
 async function handleCreateMonitor(event) {
   event.preventDefault();
 
-  const name = qs("#monitor-name").value.trim();
-  const slug = qs("#monitor-slug").value.trim();
-  const url = qs("#monitor-url").value.trim();
-  const interval = parseInt(qs("#monitor-interval").value, 10) || 30;
+  const nameInput = qs("#monitor-name");
+  const slugInput = qs("#monitor-slug");
+  const urlInput = qs("#monitor-url");
+  const intervalInput = qs("#monitor-interval");
+  const form = qs("#create-monitor-form");
+
+  if (!nameInput || !slugInput || !urlInput || !intervalInput || !form) {
+    return;
+  }
+
+  const name = nameInput.value.trim();
+  const slug = slugInput.value.trim();
+  const url = urlInput.value.trim();
+  const interval = parseInt(intervalInput.value, 10) || 60;
+
+  if (!name || !slug || !url) {
+    showFormMessage("Please fill in all required fields", true);
+    return;
+  }
+
+  showFormMessage("Creating monitor...", false);
 
   try {
-    const res = await fetch(API.monitors, {
+    const data = await fetchJson(API.monitors, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
         name,
         slug,
@@ -329,30 +431,37 @@ async function handleCreateMonitor(event) {
       }),
     });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data?.error || "Failed to create monitor");
-    }
+    const createdMonitor =
+      normalizeMonitor(data?.data) || normalizeMonitor(data);
 
     showFormMessage("Monitor created successfully");
 
-    // reset form
-    qs("#create-monitor-form").reset();
+    form.reset();
 
-    // 👉 update UI immédiatement
-    if (data) {
-      upsertMonitor(data);
+    if (createdMonitor) {
+      upsertMonitor(createdMonitor);
       updateSummaryFromMonitors();
+    } else {
+      await loadMonitors();
+      await loadSummary();
     }
   } catch (e) {
-    showFormMessage(e.message, true);
+    showFormMessage(e.message || "Failed to create monitor", true);
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+async function init() {
+  await loadMeta();
+  await loadSummary();
+  await loadMonitors();
+  connectWebSocket();
+
   const form = qs("#create-monitor-form");
   if (form) {
     form.addEventListener("submit", handleCreateMonitor);
   }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  init();
 });

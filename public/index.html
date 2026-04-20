@@ -31,12 +31,21 @@
     }
 
     h2 {
-      margin-top: 28px;
+      margin: 0 0 16px 0;
       font-size: 18px;
     }
 
     .container {
       padding: 24px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 18px;
     }
 
     .grid {
@@ -83,6 +92,7 @@
     .meta {
       font-size: 12px;
       color: #94a3b8;
+      word-break: break-word;
     }
 
     .topbar {
@@ -103,7 +113,6 @@
       border: 1px solid #334155;
       border-radius: 8px;
       padding: 14px 16px;
-      margin-bottom: 20px;
       color: #cbd5e1;
     }
 
@@ -111,6 +120,77 @@
       color: #94a3b8;
       font-size: 14px;
       padding: 12px 0;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .field label {
+      font-size: 13px;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    .field input {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    .field input:focus {
+      border-color: #60a5fa;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .form-message {
+      font-size: 14px;
+      color: #94a3b8;
+      min-height: 20px;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 16px;
+      }
+
+      header {
+        padding: 14px 16px;
+      }
     }
   </style>
 </head>
@@ -124,110 +204,75 @@
   </header>
 
   <div class="container">
-    <div id="summary" class="summary-box">Loading summary...</div>
+    <section class="panel">
+      <h2>Create monitor</h2>
 
-    <h2>Monitors</h2>
-    <div id="grid" class="grid"></div>
-  </div>
+      <form id="create-monitor-form">
+        <div class="form-grid">
+          <div class="field">
+            <label for="monitor-name">Name</label>
+            <input
+              id="monitor-name"
+              name="name"
+              type="text"
+              placeholder="Homepage"
+              required
+            />
+          </div>
 
-  <script>
-    const grid = document.getElementById("grid");
-    const summary = document.getElementById("summary");
-    const metaVersion = document.getElementById("meta-version");
+          <div class="field">
+            <label for="monitor-slug">Slug</label>
+            <input
+              id="monitor-slug"
+              name="slug"
+              type="text"
+              placeholder="homepage"
+              required
+            />
+          </div>
 
-    async function loadMeta() {
-      try {
-        const res = await fetch("/_meta");
-        const data = await res.json();
-        metaVersion.textContent = "v" + (data.version || "?");
-      } catch {
-        metaVersion.textContent = "v?";
-      }
-    }
+          <div class="field">
+            <label for="monitor-url">URL</label>
+            <input
+              id="monitor-url"
+              name="url"
+              type="url"
+              placeholder="https://example.com"
+              required
+            />
+          </div>
 
-    async function loadSummary() {
-      try {
-        const res = await fetch("/api/status/summary");
-        const data = await res.json();
-
-        summary.textContent =
-          "Total: " + (data.total_monitors ?? 0) +
-          " • Up: " + (data.up_monitors ?? 0) +
-          " • Down: " + (data.down_monitors ?? 0) +
-          " • Degraded: " + (data.degraded_monitors ?? 0) +
-          " • Paused: " + (data.paused_monitors ?? 0) +
-          " • Open incidents: " + (data.open_incidents ?? 0);
-      } catch {
-        summary.textContent = "Error loading summary";
-      }
-    }
-
-    function statusClass(status) {
-      switch ((status || "").toLowerCase()) {
-        case "up":
-          return "up";
-        case "down":
-          return "down";
-        case "degraded":
-          return "degraded";
-        case "paused":
-          return "paused";
-        default:
-          return "unknown";
-      }
-    }
-
-    function renderMonitor(m) {
-      const status = (m.status || "unknown").toLowerCase();
-      const slugPart = m.slug
-        ? `<div class="meta" style="margin-top: 6px;">Slug: <a href="/status/${encodeURIComponent(m.slug)}" style="color:#93c5fd;text-decoration:none;">${m.slug}</a></div>`
-        : "";
-
-      return `
-        <div class="card">
-          <h3>${m.name || "Unnamed monitor"}</h3>
-          <div class="meta">${m.url || ""}</div>
-          <div class="meta" style="margin-top: 6px;">Interval: ${m.interval_seconds ?? "?"}s</div>
-          ${slugPart}
-          <div class="status ${statusClass(status)}">
-            ${status.toUpperCase()}
+          <div class="field">
+            <label for="monitor-interval">Interval (seconds)</label>
+            <input
+              id="monitor-interval"
+              name="interval_seconds"
+              type="number"
+              min="5"
+              step="1"
+              value="60"
+              required
+            />
           </div>
         </div>
-      `;
-    }
 
-    async function loadMonitors() {
-      try {
-        const res = await fetch("/api/monitors");
-        const data = await res.json();
+        <div class="actions">
+          <button class="btn" type="submit">Create monitor</button>
+          <div id="form-message" class="form-message"></div>
+        </div>
+      </form>
+    </section>
 
-        if (!data.ok) {
-          grid.innerHTML = "<p class='empty'>Failed to load monitors</p>";
-          return;
-        }
+    <section>
+      <div id="summary" class="summary-box">Loading summary...</div>
+    </section>
 
-        const monitors = Array.isArray(data.data) ? data.data : [];
+    <section>
+      <h2>Monitors</h2>
+      <div id="grid" class="grid"></div>
+    </section>
+  </div>
 
-        if (!monitors.length) {
-          grid.innerHTML = "<p class='empty'>No monitors yet.</p>";
-          return;
-        }
-
-        grid.innerHTML = monitors.map(renderMonitor).join("");
-      } catch {
-        grid.innerHTML = "<p class='empty'>Error loading monitors</p>";
-      }
-    }
-
-    async function init() {
-      await loadMeta();
-      await loadSummary();
-      await loadMonitors();
-    }
-
-    init();
-    setInterval(loadMonitors, 5000);
-    setInterval(loadSummary, 5000);
-  </script>
+  <script src="/app.js"></script>
 </body>
 </html>
