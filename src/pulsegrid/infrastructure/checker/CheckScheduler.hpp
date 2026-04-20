@@ -14,6 +14,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <string>
 #include <unordered_map>
 
 #include <pulsegrid/application/ports/Clock.hpp>
@@ -30,6 +32,7 @@ namespace pulsegrid::infrastructure::checker
   public:
     using EntityId = pulsegrid::domain::shared::EntityId;
     using Monitor = pulsegrid::domain::monitor::Monitor;
+    using Broadcaster = std::function<void(const std::string &payload)>;
 
     struct TickResult
     {
@@ -45,7 +48,8 @@ namespace pulsegrid::infrastructure::checker
         pulsegrid::application::ports::MonitorRepository &monitor_repository,
         pulsegrid::application::services::CheckService &check_service,
         pulsegrid::application::ports::Clock &clock,
-        HttpChecker &checker);
+        HttpChecker &checker,
+        Broadcaster broadcaster = {});
 
     /**
      * @brief Run one scheduling tick using current time from the injected clock.
@@ -66,11 +70,17 @@ namespace pulsegrid::infrastructure::checker
         const EntityId &monitor_id,
         std::int64_t now_ms);
 
+    void broadcast_monitor_update(
+        const Monitor &monitor,
+        const HttpChecker::Result &check_result,
+        std::int64_t checked_at_ms) const;
+
   private:
     pulsegrid::application::ports::MonitorRepository &monitor_repository_;
     pulsegrid::application::services::CheckService &check_service_;
     pulsegrid::application::ports::Clock &clock_;
     HttpChecker &checker_;
+    Broadcaster broadcaster_;
 
     std::unordered_map<std::string, std::int64_t> last_run_by_monitor_id_;
   };

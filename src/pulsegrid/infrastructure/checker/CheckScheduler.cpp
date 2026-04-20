@@ -9,7 +9,12 @@
 
 #include "CheckScheduler.hpp"
 
+#include <string>
+
+#include <pulsegrid/domain/monitor/MonitorStatus.hpp>
 #include <pulsegrid/support/Errors.hpp>
+#include <pulsegrid/support/Json.hpp>
+#include <vix/json/json.hpp>
 
 namespace pulsegrid::infrastructure::checker
 {
@@ -17,11 +22,13 @@ namespace pulsegrid::infrastructure::checker
       pulsegrid::application::ports::MonitorRepository &monitor_repository,
       pulsegrid::application::services::CheckService &check_service,
       pulsegrid::application::ports::Clock &clock,
-      HttpChecker &checker)
+      HttpChecker &checker,
+      Broadcaster broadcaster)
       : monitor_repository_(monitor_repository),
         check_service_(check_service),
         clock_(clock),
-        checker_(checker)
+        checker_(checker),
+        broadcaster_(std::move(broadcaster))
   {
   }
 
@@ -55,26 +62,31 @@ namespace pulsegrid::infrastructure::checker
       switch (check_result.outcome)
       {
       case HttpChecker::Outcome::Up:
-        check_service_.record_success({.monitor_id = monitor.id(),
-                                       .response_time_ms = check_result.response_time_ms});
+        check_service_.record_success(
+            {.monitor_id = monitor.id(),
+             .response_time_ms = check_result.response_time_ms});
         ++summary.succeeded;
         break;
 
       case HttpChecker::Outcome::Degraded:
-        check_service_.record_degraded({.monitor_id = monitor.id(),
-                                        .response_time_ms = check_result.response_time_ms,
-                                        .error_message = check_result.error_message});
+        check_service_.record_degraded(
+            {.monitor_id = monitor.id(),
+             .response_time_ms = check_result.response_time_ms,
+             .error_message = check_result.error_message});
         ++summary.degraded;
         break;
 
       case HttpChecker::Outcome::Down:
-        check_service_.record_failure({.monitor_id = monitor.id(),
-                                       .error_message = check_result.error_message.empty()
-                                                            ? std::string("health check failed")
-                                                            : check_result.error_message});
+        check_service_.record_failure(
+            {.monitor_id = monitor.id(),
+             .error_message = check_result.error_message.empty()
+                                  ? std::string("health check failed")
+                                  : check_result.error_message});
         ++summary.failed;
         break;
       }
+
+      broadcast_monitor_update(monitor, check_result, now_ms);
 
       mark_executed(monitor.id(), now_ms);
       ++summary.processed;
@@ -105,6 +117,39 @@ namespace pulsegrid::infrastructure::checker
       std::int64_t now_ms)
   {
     last_run_by_monitor_id_[monitor_id.value()] = now_ms;
+  }
+
+  void CheckScheduler::broadcast_monitor_update(
+      const Monitor &monitor,
+      const HttpChecker::Result &check_result,
+      std::int64_t checked_at_ms) const
+  {
+    if (!broadcaster_)
+    {
+      return;
+    }
+
+    namespace J = vix::json;
+
+    std::string status = "down";
+    switch (check_result.outcome)
+    {
+    case HttpChecker::Outcome::Up:
+      status = "up";
+      break;
+    case HttpChecker::Outcome::Degraded:
+      status = "degraded";
+      break;
+    case HttpChecker::Outcome::Down:
+      status = "down";
+      break;
+    }
+
+    auto payload = J::o(
+        "type", "monitor.updated",
+        "data", J::o("id", monitor.id().value(), "name", monitor.name(), "slug", monitor.slug(), "url", monitor.url().value(), "interval_seconds", monitor.interval().seconds(), "status", status, "response_time_ms", check_result.response_time_ms, "status_code", check_result.status_code, "error_message", check_result.error_message, "checked_at_ms", checked_at_ms));
+
+    broadcaster_(pulsegrid::support::stringify(payload));
   }
 
 } // namespace pulsegrid::infrastructure::checker

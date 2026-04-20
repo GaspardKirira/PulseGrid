@@ -206,7 +206,14 @@ namespace pulsegrid::app
             *monitor_repository_,
             *check_service_,
             *clock_,
-            *http_checker_);
+            *http_checker_,
+            [this](const std::string &payload)
+            {
+              if (status_ws_gateway_)
+              {
+                status_ws_gateway_->broadcast(payload);
+              }
+            });
   }
 
   void AppBootstrap::initialize_controllers()
