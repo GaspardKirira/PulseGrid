@@ -76,7 +76,6 @@ namespace pulsegrid::app
   {
     using namespace vix::middleware::app;
 
-    install(app, "/api/", json_dev(1024 * 64, true, true));
     install(app, "/api/", rate_limit_dev(120, std::chrono::minutes(1)));
   }
 

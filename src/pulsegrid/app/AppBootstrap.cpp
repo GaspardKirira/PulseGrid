@@ -13,10 +13,14 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 #include <pulsegrid/infrastructure/db/DatabaseFactory.hpp>
 #include <pulsegrid/support/Constants.hpp>
 #include <pulsegrid/support/Errors.hpp>
+#include <vix/websocket/AttachedRuntime.hpp>
 
 namespace pulsegrid::app
 {
@@ -44,7 +48,55 @@ namespace pulsegrid::app
           "http server listening",
           "port", port);
 
-      http_app_->run(port);
+      if (!http_app_)
+      {
+        throw std::runtime_error("HTTP app is not initialized");
+      }
+
+      if (!ws_app_)
+      {
+        throw std::runtime_error("WebSocket app is not initialized");
+      }
+
+      if (!ws_executor_)
+      {
+        throw std::runtime_error("WebSocket executor is not initialized");
+      }
+
+      std::thread scheduler_thread([this]()
+                                   {
+      while (true)
+      {
+        try
+        {
+          const auto result = check_scheduler_->tick();
+
+          pulsegrid::infrastructure::runtime::AppLogger::infof(
+              "scheduler tick completed",
+              "processed", static_cast<long long>(result.processed),
+              "skipped", static_cast<long long>(result.skipped),
+              "succeeded", static_cast<long long>(result.succeeded),
+              "degraded", static_cast<long long>(result.degraded),
+              "failed", static_cast<long long>(result.failed));
+        }
+        catch (const std::exception &e)
+        {
+          pulsegrid::infrastructure::runtime::AppLogger::errorf(
+              "scheduler tick failed",
+              "error", std::string(e.what()));
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+      } });
+
+      scheduler_thread.detach();
+
+      vix::run_http_and_ws(
+          *http_app_,
+          ws_app_->server(),
+          ws_executor_,
+          port);
+
       return 0;
     }
     catch (const std::exception &e)
@@ -192,14 +244,30 @@ namespace pulsegrid::app
 
     middleware_registry_->register_all(*http_app_);
     route_registry_->register_all(*http_app_);
+
+    auto r = http_app_->router();
+    if (r)
+    {
+      for (const auto &route : r->routes())
+      {
+        pulsegrid::infrastructure::runtime::AppLogger::infof(
+            "registered route",
+            "method", route.method,
+            "path", route.path);
+      }
+    }
   }
 
   void AppBootstrap::initialize_ws_app()
   {
-    if (status_ws_gateway_)
+    if (!status_ws_gateway_)
     {
-      status_ws_gateway_->register_routes();
+      throw std::runtime_error("Status WS gateway is not initialized");
     }
+
+    status_ws_gateway_->register_routes();
+
+    pulsegrid::infrastructure::runtime::AppLogger::info("websocket routes registered");
   }
 
 } // namespace pulsegrid::app

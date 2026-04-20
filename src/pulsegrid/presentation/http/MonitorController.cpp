@@ -18,6 +18,7 @@
 #include <pulsegrid/support/Errors.hpp>
 #include <pulsegrid/support/Json.hpp>
 #include <vix/json/json.hpp>
+#include <pulsegrid/infrastructure/runtime/AppLogger.hpp>
 
 namespace pulsegrid::presentation::http
 {
@@ -51,29 +52,29 @@ namespace pulsegrid::presentation::http
   {
     app.get("/api/monitors", [this](vix::Request &, vix::Response &res)
             {
-              namespace J = vix::json;
+  namespace J = vix::json;
 
-              try
-              {
-                const auto monitors = monitor_service_.list_monitors();
+  try
+  {
+    const auto monitors = monitor_service_.list_monitors();
 
-                J::Json items = J::Json::array();
-                for (const auto &monitor : monitors)
-                {
-                  items.push_back(
-                      pulsegrid::presentation::dto::MonitorResponse::from_domain(monitor));
-                }
+    J::Json items = J::Json::array();
+    for (const auto &monitor : monitors)
+    {
+      items.push_back(
+          pulsegrid::presentation::dto::MonitorResponse::from_domain(monitor));
+    }
 
-                res.status(200).json(
-                    J::o(
-                        "ok", true,
-                        "count", static_cast<long long>(monitors.size()),
-                        "data", items));
-              }
-              catch (const std::exception &e)
-              {
-                send_error(res, 500, e.what());
-              } });
+    res.status(200).json(
+        J::o(
+            "ok", true,
+            "count", static_cast<long long>(monitors.size()),
+            "data", items));
+  }
+  catch (const std::exception &e)
+  {
+    send_error(res, 500, e.what());
+  } });
 
     app.get("/api/monitors/{id}", [this](vix::Request &req, vix::Response &res)
             {
