@@ -211,11 +211,10 @@ namespace pulsegrid::app
             {
               if (status_ws_gateway_)
               {
-                status_ws_gateway_->broadcast(payload);
+                status_ws_gateway_->broadcast_dashboard(payload);
               }
             });
   }
-
   void AppBootstrap::initialize_controllers()
   {
     health_controller_ =

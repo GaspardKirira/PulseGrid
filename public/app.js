@@ -5,12 +5,25 @@ const API = {
   meta: "/_meta",
 };
 
+const WS = {
+  endpoint: "/",
+  reconnectDelayMs: 3000,
+};
+
 const state = {
   monitors: [],
+  ws: null,
+  reconnectTimer: null,
 };
 
 function qs(selector) {
   return document.querySelector(selector);
+}
+
+function wsUrl() {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.hostname;
+  return `${protocol}//${host}:9090${WS.endpoint}`;
 }
 
 async function fetchJson(url, opts = {}) {
@@ -54,27 +67,34 @@ async function loadMeta() {
   }
 }
 
-async function loadSummary() {
+function renderSummary(data) {
   const summary = qs("#summary");
   if (!summary) return;
 
+  summary.textContent =
+    "Total: " +
+    (data.total_monitors ?? 0) +
+    " • Up: " +
+    (data.up_monitors ?? 0) +
+    " • Down: " +
+    (data.down_monitors ?? 0) +
+    " • Degraded: " +
+    (data.degraded_monitors ?? 0) +
+    " • Paused: " +
+    (data.paused_monitors ?? 0) +
+    " • Open incidents: " +
+    (data.open_incidents ?? 0);
+}
+
+async function loadSummary() {
   try {
     const data = await fetchJson(API.summary);
-    summary.textContent =
-      "Total: " +
-      (data.total_monitors ?? 0) +
-      " • Up: " +
-      (data.up_monitors ?? 0) +
-      " • Down: " +
-      (data.down_monitors ?? 0) +
-      " • Degraded: " +
-      (data.degraded_monitors ?? 0) +
-      " • Paused: " +
-      (data.paused_monitors ?? 0) +
-      " • Open incidents: " +
-      (data.open_incidents ?? 0);
+    renderSummary(data);
   } catch (e) {
-    summary.textContent = e.message || "Error loading summary";
+    const summary = qs("#summary");
+    if (summary) {
+      summary.textContent = e.message || "Error loading summary";
+    }
   }
 }
 
@@ -85,7 +105,7 @@ function renderMonitor(m) {
     : "";
 
   return `
-    <div class="card">
+    <div class="card" data-monitor-id="${m.id || ""}">
       <h3>${m.name || "Unnamed monitor"}</h3>
       <div class="meta">${m.url || ""}</div>
       <div class="meta" style="margin-top: 6px;">Interval: ${m.interval_seconds ?? "?"}s</div>
@@ -127,14 +147,154 @@ async function loadMonitors() {
   }
 }
 
+function upsertMonitor(monitor) {
+  const index = state.monitors.findIndex((item) => item.id === monitor.id);
+
+  if (index === -1) {
+    state.monitors.push(monitor);
+  } else {
+    state.monitors[index] = {
+      ...state.monitors[index],
+      ...monitor,
+    };
+  }
+
+  renderMonitors();
+}
+
+function updateSummaryFromMonitors() {
+  const totals = {
+    total_monitors: state.monitors.length,
+    up_monitors: 0,
+    down_monitors: 0,
+    degraded_monitors: 0,
+    paused_monitors: 0,
+    open_incidents: 0,
+  };
+
+  for (const monitor of state.monitors) {
+    switch ((monitor.status || "").toLowerCase()) {
+      case "up":
+        totals.up_monitors += 1;
+        break;
+      case "down":
+        totals.down_monitors += 1;
+        break;
+      case "degraded":
+        totals.degraded_monitors += 1;
+        break;
+      case "paused":
+        totals.paused_monitors += 1;
+        break;
+      default:
+        break;
+    }
+  }
+
+  renderSummary(totals);
+}
+
+function handleWsMessage(raw) {
+  let msg;
+
+  try {
+    msg = JSON.parse(raw);
+  } catch {
+    return;
+  }
+
+  if (!msg || typeof msg !== "object") {
+    return;
+  }
+
+  if (msg.type === "ws.connected") {
+    try {
+      state.ws?.send(
+        JSON.stringify({
+          type: "status.subscribe",
+          payload: {},
+        }),
+      );
+    } catch {}
+    return;
+  }
+
+  if (msg.type === "status.subscribed" || msg.type === "pong") {
+    return;
+  }
+
+  if (
+    (msg.type === "monitor.updated" || msg.type === "monitor.created") &&
+    msg.data
+  ) {
+    upsertMonitor(msg.data);
+    updateSummaryFromMonitors();
+    return;
+  }
+
+  if (
+    msg.type === "check.recorded" ||
+    msg.type === "incident.opened" ||
+    msg.type === "incident.resolved"
+  ) {
+    void loadSummary();
+    void loadMonitors();
+  }
+}
+
+function scheduleReconnect() {
+  if (state.reconnectTimer) {
+    return;
+  }
+
+  state.reconnectTimer = window.setTimeout(() => {
+    state.reconnectTimer = null;
+    connectWebSocket();
+  }, WS.reconnectDelayMs);
+}
+
+function connectWebSocket() {
+  if (
+    state.ws &&
+    (state.ws.readyState === WebSocket.OPEN ||
+      state.ws.readyState === WebSocket.CONNECTING)
+  ) {
+    return;
+  }
+
+  try {
+    const socket = new WebSocket(wsUrl());
+    state.ws = socket;
+
+    socket.addEventListener("open", () => {
+      console.log("[PulseGrid] WS connected");
+    });
+
+    socket.addEventListener("message", (event) => {
+      handleWsMessage(event.data);
+    });
+
+    socket.addEventListener("close", () => {
+      console.log("[PulseGrid] WS disconnected");
+      state.ws = null;
+      scheduleReconnect();
+    });
+
+    socket.addEventListener("error", () => {
+      socket.close();
+    });
+  } catch {
+    scheduleReconnect();
+  }
+}
+
 async function init() {
   await loadMeta();
   await loadSummary();
   await loadMonitors();
+  connectWebSocket();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   init();
-  setInterval(loadMonitors, 5000);
-  setInterval(loadSummary, 5000);
 });

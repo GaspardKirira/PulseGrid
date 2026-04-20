@@ -182,123 +182,249 @@
     </section>
   </main>
 
-  <script>
-    function getSlugFromPath() {
-      const parts = window.location.pathname.split("/").filter(Boolean);
-      return parts.length >= 2 ? decodeURIComponent(parts[1]) : "";
+<script>
+  const WS = {
+    endpoint: "/",
+    reconnectDelayMs: 3000,
+  };
+
+  let ws = null;
+  let reconnectTimer = null;
+
+  function getSlugFromPath() {
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    return parts.length >= 2 ? decodeURIComponent(parts[1]) : "";
+  }
+
+  function formatTimestamp(ms) {
+    if (ms === null || ms === undefined) return "—";
+    const date = new Date(ms);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleString();
+  }
+
+  function statusClass(status) {
+    switch ((status || "").toLowerCase()) {
+      case "up":
+        return "status-up";
+      case "down":
+        return "status-down";
+      case "degraded":
+        return "status-degraded";
+      case "paused":
+        return "status-paused";
+      default:
+        return "status-unknown";
+    }
+  }
+
+  function showError(message) {
+    const box = document.getElementById("error-box");
+    box.textContent = message;
+    box.classList.remove("hidden");
+  }
+
+  function hideError() {
+    document.getElementById("error-box").classList.add("hidden");
+  }
+
+  function renderStatus(view) {
+    const monitor = view.monitor || {};
+    const latestCheck = view.latest_check || null;
+    const openIncident = view.open_incident || null;
+
+    const hero = document.getElementById("hero");
+    const metrics = document.getElementById("metrics");
+    const incidentBox = document.getElementById("incident-box");
+
+    document.title = `${monitor.name || "Monitor"} · PulseGrid Status`;
+
+    document.getElementById("monitor-name").textContent =
+      monitor.name || "Unnamed monitor";
+
+    document.getElementById("monitor-url").textContent =
+      monitor.url || "";
+
+    document.getElementById("monitor-meta").textContent =
+      `Slug: ${monitor.slug || "—"} • Interval: ${monitor.interval_seconds ?? "—"}s`;
+
+    const pill = document.getElementById("monitor-status-pill");
+    const statusText = (monitor.status || "unknown").toUpperCase();
+    pill.textContent = statusText;
+    pill.className = `status-pill ${statusClass(monitor.status)}`;
+
+    document.getElementById("latest-check-status").textContent =
+      latestCheck?.status ? latestCheck.status.toUpperCase() : "—";
+
+    document.getElementById("response-time").textContent =
+      latestCheck?.response_time_ms !== null &&
+      latestCheck?.response_time_ms !== undefined
+        ? `${latestCheck.response_time_ms} ms`
+        : "—";
+
+    document.getElementById("checked-at").textContent =
+      latestCheck?.checked_at_ms
+        ? formatTimestamp(latestCheck.checked_at_ms)
+        : "—";
+
+    if (openIncident) {
+      document.getElementById("incident-message").textContent =
+        openIncident.message || "Incident open";
+      document.getElementById("incident-started").textContent =
+        `Started at: ${formatTimestamp(openIncident.started_at_ms)}`;
+      incidentBox.classList.remove("hidden");
+    } else {
+      incidentBox.classList.add("hidden");
     }
 
-    function formatTimestamp(ms) {
-      if (ms === null || ms === undefined) return "—";
-      const date = new Date(ms);
-      if (Number.isNaN(date.getTime())) return "—";
-      return date.toLocaleString();
+    hero.classList.remove("hidden");
+    metrics.classList.remove("hidden");
+  }
+
+  async function loadStatus() {
+    hideError();
+
+    const slug = getSlugFromPath();
+    if (!slug) {
+      showError("Missing monitor slug in URL.");
+      return;
     }
 
-    function statusClass(status) {
-      switch ((status || "").toLowerCase()) {
-        case "up":
-          return "status-up";
-        case "down":
-          return "status-down";
-        case "degraded":
-          return "status-degraded";
-        case "paused":
-          return "status-paused";
-        default:
-          return "status-unknown";
-      }
-    }
+    try {
+      const response = await fetch(`/api/status/${encodeURIComponent(slug)}`);
 
-    function showError(message) {
-      const box = document.getElementById("error-box");
-      box.textContent = message;
-      box.classList.remove("hidden");
-    }
-
-    function hideError() {
-      document.getElementById("error-box").classList.add("hidden");
-    }
-
-    function renderStatus(view) {
-      const monitor = view.monitor || {};
-      const latestCheck = view.latest_check || null;
-      const openIncident = view.open_incident || null;
-
-      const hero = document.getElementById("hero");
-      const metrics = document.getElementById("metrics");
-      const incidentBox = document.getElementById("incident-box");
-
-      document.title = `${monitor.name || "Monitor"} · PulseGrid Status`;
-
-      document.getElementById("monitor-name").textContent = monitor.name || "Unnamed monitor";
-      document.getElementById("monitor-url").textContent = monitor.url || "";
-      document.getElementById("monitor-meta").textContent =
-        `Slug: ${monitor.slug || "—"} • Interval: ${monitor.interval_seconds ?? "—"}s`;
-
-      const pill = document.getElementById("monitor-status-pill");
-      const statusText = (monitor.status || "unknown").toUpperCase();
-      pill.textContent = statusText;
-      pill.className = `status-pill ${statusClass(monitor.status)}`;
-
-      document.getElementById("latest-check-status").textContent =
-        latestCheck?.status ? latestCheck.status.toUpperCase() : "—";
-
-      document.getElementById("response-time").textContent =
-        latestCheck?.response_time_ms !== null && latestCheck?.response_time_ms !== undefined
-          ? `${latestCheck.response_time_ms} ms`
-          : "—";
-
-      document.getElementById("checked-at").textContent =
-        latestCheck?.checked_at_ms ? formatTimestamp(latestCheck.checked_at_ms) : "—";
-
-      if (openIncident) {
-        document.getElementById("incident-message").textContent =
-          openIncident.message || "Incident open";
-        document.getElementById("incident-started").textContent =
-          `Started at: ${formatTimestamp(openIncident.started_at_ms)}`;
-        incidentBox.classList.remove("hidden");
-      } else {
-        incidentBox.classList.add("hidden");
-      }
-
-      hero.classList.remove("hidden");
-      metrics.classList.remove("hidden");
-    }
-
-    async function loadStatus() {
-      hideError();
-
-      const slug = getSlugFromPath();
-      if (!slug) {
-        showError("Missing monitor slug in URL.");
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        showError(data?.error || "Failed to load public status.");
         return;
       }
 
-      try {
-        const response = await fetch(`/api/status/${encodeURIComponent(slug)}`);
+      const data = await response.json();
 
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          showError(data?.error || "Failed to load public status.");
-          return;
-        }
-
-        const data = await response.json();
-
-        if (!data.monitor) {
-          showError("Invalid response format.");
-          return;
-        }
-
-        renderStatus(data);
-      } catch {
-        showError("Network error while loading status.");
+      if (!data.monitor) {
+        showError("Invalid response format.");
+        return;
       }
+
+      renderStatus(data);
+    } catch {
+      showError("Network error while loading status.");
+    }
+  }
+
+  function wsUrl() {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.hostname;
+    return `${protocol}//${host}:9090${WS.endpoint}`;
+  }
+
+  function handleWsMessage(raw) {
+    let msg;
+
+    try {
+      msg = JSON.parse(raw);
+    } catch {
+      return;
     }
 
+    if (!msg || typeof msg !== "object") {
+      return;
+    }
+
+    if (
+      msg.type === "ws.connected" ||
+      msg.type === "monitor.subscribed" ||
+      msg.type === "pong"
+    ) {
+      return;
+    }
+
+    if (msg.type === "monitor.updated" && msg.data) {
+      const currentSlug = getSlugFromPath();
+      if (msg.data.slug !== currentSlug) {
+        return;
+      }
+
+      renderStatus({
+        monitor: {
+          id: msg.data.id,
+          name: msg.data.name,
+          slug: msg.data.slug,
+          url: msg.data.url,
+          interval_seconds: msg.data.interval_seconds,
+          status: msg.data.status,
+        },
+        latest_check: {
+          status: msg.data.status,
+          response_time_ms: msg.data.response_time_ms,
+          checked_at_ms: msg.data.checked_at_ms,
+        },
+        open_incident: null,
+      });
+
+      hideError();
+    }
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) {
+      return;
+    }
+
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = null;
+      connectWebSocket();
+    }, WS.reconnectDelayMs);
+  }
+
+  function connectWebSocket() {
+    if (
+      ws &&
+      (ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
+
+    try {
+      ws = new WebSocket(wsUrl());
+
+      ws.addEventListener("open", () => {
+        const slug = getSlugFromPath();
+
+        try {
+          ws.send(
+            JSON.stringify({
+              type: "monitor.subscribe",
+              payload: { slug },
+            })
+          );
+        } catch {}
+      });
+
+      ws.addEventListener("message", (event) => {
+        handleWsMessage(event.data);
+      });
+
+      ws.addEventListener("close", () => {
+        ws = null;
+        scheduleReconnect();
+      });
+
+      ws.addEventListener("error", () => {
+        if (ws) {
+          ws.close();
+        }
+      });
+    } catch {
+      scheduleReconnect();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
     loadStatus();
-    setInterval(loadStatus, 5000);
-  </script>
+    connectWebSocket();
+  });
+</script>
 </body>
 </html>
