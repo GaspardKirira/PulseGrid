@@ -140,7 +140,7 @@ namespace pulsegrid::infrastructure::db
       auto rows = database_->query(
           "SELECT id, monitor_id, message, started_at_ms, resolved_at_ms, state "
           "FROM incidents "
-          "WHERE monitor_id = ? AND state = ? "
+          "WHERE monitor_id = ? AND state = ? AND resolved_at_ms IS NULL "
           "ORDER BY started_at_ms DESC "
           "LIMIT 1",
           monitor_id.value(),
@@ -214,10 +214,21 @@ namespace pulsegrid::infrastructure::db
   SqliteIncidentRepository::Incident
   SqliteIncidentRepository::map_incident(const vix::db::ResultRow &row)
   {
+    const auto state =
+        pulsegrid::domain::incident::incident_state_from_string(row.getString(5));
+
     std::optional<std::int64_t> resolved_at_ms;
-    if (!row.isNull(4))
+
+    if (state == pulsegrid::domain::incident::IncidentState::Resolved)
     {
-      resolved_at_ms = row.getInt64(4);
+      if (!row.isNull(4))
+      {
+        resolved_at_ms = row.getInt64(4);
+      }
+    }
+    else
+    {
+      resolved_at_ms = std::nullopt;
     }
 
     return Incident(
@@ -226,7 +237,6 @@ namespace pulsegrid::infrastructure::db
         row.getString(2),
         row.getInt64(3),
         resolved_at_ms,
-        pulsegrid::domain::incident::incident_state_from_string(row.getString(5)));
+        state);
   }
-
 } // namespace pulsegrid::infrastructure::db
