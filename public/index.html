@@ -4,273 +4,175 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PulseGrid</title>
-
   <link rel="stylesheet" href="/app.css" />
-
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-      margin: 0;
-      padding: 0;
-    }
-
-    header {
-      padding: 16px 24px;
-      border-bottom: 1px solid #1e293b;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    h2 {
-      margin: 0 0 16px 0;
-      font-size: 18px;
-    }
-
-    .container {
-      padding: 24px;
-      display: grid;
-      gap: 24px;
-    }
-
-    .panel {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 18px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 16px;
-    }
-
-    .card {
-      background: #1e293b;
-      padding: 16px;
-      border-radius: 8px;
-      border: 1px solid #334155;
-    }
-
-    .card h3 {
-      margin: 0 0 8px 0;
-      font-size: 16px;
-    }
-
-    .status {
-      font-size: 14px;
-      margin-top: 8px;
-      font-weight: 600;
-    }
-
-    .up {
-      color: #22c55e;
-    }
-
-    .down {
-      color: #ef4444;
-    }
-
-    .degraded {
-      color: #facc15;
-    }
-
-    .paused,
-    .unknown {
-      color: #cbd5e1;
-    }
-
-    .meta {
-      font-size: 12px;
-      color: #94a3b8;
-      word-break: break-word;
-    }
-
-    .topbar {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .badge {
-      background: #1e40af;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 12px;
-    }
-
-    .summary-box {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 14px 16px;
-      color: #cbd5e1;
-    }
-
-    .empty {
-      color: #94a3b8;
-      font-size: 14px;
-      padding: 12px 0;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .field label {
-      font-size: 13px;
-      color: #cbd5e1;
-      font-weight: 600;
-    }
-
-    .field input {
-      width: 100%;
-      box-sizing: border-box;
-      border: 1px solid #475569;
-      background: #0f172a;
-      color: #e2e8f0;
-      border-radius: 8px;
-      padding: 12px 14px;
-      outline: none;
-    }
-
-    .field input:focus {
-      border-color: #60a5fa;
-    }
-
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 16px;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      border: 0;
-      border-radius: 8px;
-      padding: 12px 16px;
-      background: #2563eb;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .btn:hover {
-      background: #1d4ed8;
-    }
-
-    .form-message {
-      font-size: 14px;
-      color: #94a3b8;
-      min-height: 20px;
-    }
-
-    @media (max-width: 640px) {
-      .container {
-        padding: 16px;
-      }
-
-      header {
-        padding: 14px 16px;
-      }
-    }
-  </style>
 </head>
 
 <body>
-  <header>
-    <h1>PulseGrid</h1>
-    <div class="topbar">
-      <span class="badge" id="meta-version">v?</span>
-    </div>
-  </header>
+  <div class="page-shell">
+    <header class="site-header">
+      <div class="header-content">
+        <div class="brand-block">
+          <div class="brand-badge">PG</div>
 
-  <div class="container">
-    <section class="panel">
-      <h2>Create monitor</h2>
-
-      <form id="create-monitor-form">
-        <div class="form-grid">
-          <div class="field">
-            <label for="monitor-name">Name</label>
-            <input
-              id="monitor-name"
-              name="name"
-              type="text"
-              placeholder="Homepage"
-              required
-            />
-          </div>
-
-          <div class="field">
-            <label for="monitor-slug">Slug</label>
-            <input
-              id="monitor-slug"
-              name="slug"
-              type="text"
-              placeholder="homepage"
-              required
-            />
-          </div>
-
-          <div class="field">
-            <label for="monitor-url">URL</label>
-            <input
-              id="monitor-url"
-              name="url"
-              type="url"
-              placeholder="https://example.com"
-              required
-            />
-          </div>
-
-          <div class="field">
-            <label for="monitor-interval">Interval (seconds)</label>
-            <input
-              id="monitor-interval"
-              name="interval_seconds"
-              type="number"
-              min="5"
-              step="1"
-              value="60"
-              required
-            />
+          <div class="brand-text">
+            <p class="eyebrow">Built with Vix</p>
+            <h1 class="site-title">PulseGrid</h1>
+            <p class="subtitle">
+                PulseGrid is a real-time monitoring app powered by Vix, built to track uptime, incidents, and live status updates.
+            </p>
           </div>
         </div>
 
-        <div class="actions">
-          <button class="btn" type="submit">Create monitor</button>
-          <div id="form-message" class="form-message"></div>
+        <div class="header-actions">
+          <span class="version-badge" id="meta-version">v?</span>
         </div>
-      </form>
-    </section>
+      </div>
+    </header>
 
-    <section>
-      <div id="summary" class="summary-box">Loading summary...</div>
-    </section>
+    <main class="main-content">
+      <section class="hero-summary" aria-label="System summary">
+        <div id="summary" class="summary-box">
+          <div class="summary-head">
+            <div>
+              <p class="summary-kicker">System overview</p>
+              <h2 class="summary-title">Monitoring summary</h2>
+            </div>
+          </div>
 
-    <section>
-      <h2>Monitors</h2>
-      <div id="grid" class="grid"></div>
-    </section>
+          <div class="summary-stats">
+            <div class="summary-stat">
+              <span class="summary-stat__label">Total</span>
+              <strong id="summary-total" class="summary-stat__value">0</strong>
+            </div>
+
+            <div class="summary-stat summary-stat--up">
+              <span class="summary-stat__label">Up</span>
+              <strong id="summary-up" class="summary-stat__value">0</strong>
+            </div>
+
+            <div class="summary-stat summary-stat--down">
+              <span class="summary-stat__label">Down</span>
+              <strong id="summary-down" class="summary-stat__value">0</strong>
+            </div>
+
+            <div class="summary-stat summary-stat--degraded">
+              <span class="summary-stat__label">Degraded</span>
+              <strong id="summary-degraded" class="summary-stat__value">0</strong>
+            </div>
+
+            <div class="summary-stat summary-stat--paused">
+              <span class="summary-stat__label">Paused</span>
+              <strong id="summary-paused" class="summary-stat__value">0</strong>
+            </div>
+
+            <div class="summary-stat summary-stat--incident">
+              <span class="summary-stat__label">Open incidents</span>
+              <strong id="summary-incidents" class="summary-stat__value">0</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="layout-grid">
+        <aside class="panel form-panel" aria-labelledby="create-monitor-title">
+          <div class="panel-head">
+            <p class="section-kicker">New monitor</p>
+            <h2 id="create-monitor-title">Create monitor</h2>
+            <p class="section-text">
+              Add a new endpoint to track uptime, latency, and incidents.
+            </p>
+          </div>
+
+          <form id="create-monitor-form" class="monitor-form" novalidate>
+            <div class="form-grid">
+              <div class="field">
+                <label for="monitor-name">Name</label>
+                <input
+                  id="monitor-name"
+                  name="name"
+                  type="text"
+                  placeholder="Local Vix Health"
+                  maxlength="120"
+                  autocomplete="off"
+                  required
+                />
+              </div>
+
+              <div class="field">
+                <label for="monitor-slug">Slug</label>
+                <input
+                  id="monitor-slug"
+                  name="slug"
+                  type="text"
+                  placeholder="local-vix-health"
+                  maxlength="120"
+                  pattern="[a-z0-9_-]+"
+                  autocomplete="off"
+                  spellcheck="false"
+                  required
+                />
+                <small class="field-hint">
+                  Use lowercase letters, numbers, "-" or "_".
+                </small>
+              </div>
+
+              <div class="field field-full">
+                <label for="monitor-url">URL</label>
+                <input
+                  id="monitor-url"
+                  name="url"
+                  type="url"
+                  placeholder="http://127.0.0.1:3000/health"
+                  inputmode="url"
+                  autocomplete="off"
+                  spellcheck="false"
+                  required
+                />
+                <small class="field-hint">
+                  Must start with http:// or https://
+                </small>
+              </div>
+
+              <div class="field">
+                <label for="monitor-interval">Interval (seconds)</label>
+                <input
+                  id="monitor-interval"
+                  name="interval_seconds"
+                  type="number"
+                  min="15"
+                  max="3600"
+                  step="1"
+                  value="60"
+                  required
+                />
+                <small class="field-hint">
+                  Allowed range: 15 to 3600 seconds.
+                </small>
+              </div>
+            </div>
+
+            <div class="form-footer">
+              <button class="btn btn-primary" type="submit">Create monitor</button>
+              <div id="form-message" class="form-message" aria-live="polite"></div>
+            </div>
+          </form>
+        </aside>
+
+        <section class="panel monitors-panel" aria-labelledby="monitors-title">
+          <div class="panel-head monitors-head">
+            <div>
+              <p class="section-kicker">Active endpoints</p>
+              <h2 id="monitors-title">Monitors</h2>
+              <p class="section-text">
+                Live status of all registered services.
+              </p>
+            </div>
+          </div>
+
+          <div id="grid" class="grid"></div>
+        </section>
+      </section>
+    </main>
   </div>
 
   <script src="/app.js"></script>

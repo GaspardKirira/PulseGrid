@@ -140,24 +140,23 @@ async function loadMeta() {
 }
 
 function renderSummary(data) {
-  const summary = qs("#summary");
-  if (!summary) {
+  const total = document.getElementById("summary-total");
+  const up = document.getElementById("summary-up");
+  const down = document.getElementById("summary-down");
+  const degraded = document.getElementById("summary-degraded");
+  const paused = document.getElementById("summary-paused");
+  const incidents = document.getElementById("summary-incidents");
+
+  if (!total || !up || !down || !degraded || !paused || !incidents) {
     return;
   }
 
-  summary.textContent =
-    "Total: " +
-    (data?.total_monitors ?? 0) +
-    " • Up: " +
-    (data?.up_monitors ?? 0) +
-    " • Down: " +
-    (data?.down_monitors ?? 0) +
-    " • Degraded: " +
-    (data?.degraded_monitors ?? 0) +
-    " • Paused: " +
-    (data?.paused_monitors ?? 0) +
-    " • Open incidents: " +
-    (data?.open_incidents ?? 0);
+  total.textContent = data?.total_monitors ?? 0;
+  up.textContent = data?.up_monitors ?? 0;
+  down.textContent = data?.down_monitors ?? 0;
+  degraded.textContent = data?.degraded_monitors ?? 0;
+  paused.textContent = data?.paused_monitors ?? 0;
+  incidents.textContent = data?.open_incidents ?? 0;
 }
 
 async function loadSummary() {

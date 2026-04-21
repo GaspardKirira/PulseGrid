@@ -12,6 +12,7 @@
 #include <chrono>
 #include <string>
 #include <string_view>
+#include <thread>
 
 namespace pulsegrid::infrastructure::checker
 {
@@ -31,6 +32,14 @@ namespace pulsegrid::infrastructure::checker
       result.status_code = 0;
       result.error_message = "unsupported URL scheme";
     }
+    else if (value.find("slow-health") != std::string::npos)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+
+      result.outcome = Outcome::Up;
+      result.status_code = 200;
+      result.error_message.clear();
+    }
     else if (is_localhost_url(value))
     {
       result.outcome = Outcome::Up;
@@ -39,6 +48,8 @@ namespace pulsegrid::infrastructure::checker
     }
     else if (value.find("degraded") != std::string::npos)
     {
+      std::this_thread::sleep_for(std::chrono::milliseconds(700));
+
       result.outcome = Outcome::Degraded;
       result.status_code = 200;
       result.error_message = "service responded slowly or partially";
