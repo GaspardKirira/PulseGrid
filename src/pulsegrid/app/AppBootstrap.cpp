@@ -54,25 +54,7 @@ namespace pulsegrid::app
         throw std::runtime_error("WebSocket executor is not initialized");
       }
 
-      std::thread scheduler_thread([this]()
-                                   {
-      while (true)
-      {
-        try
-        {
-          (void)check_scheduler_->tick();
-        }
-        catch (const std::exception &e)
-        {
-          pulsegrid::infrastructure::runtime::AppLogger::errorf(
-              "scheduler tick failed",
-              "error", std::string(e.what()));
-        }
-
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-      } });
-
-      scheduler_thread.detach();
+      start_scheduler();
 
       vix::run_http_and_ws(
           *http_app_,
@@ -80,13 +62,18 @@ namespace pulsegrid::app
           ws_executor_,
           port);
 
+      stop_scheduler();
+
       return 0;
     }
     catch (const std::exception &e)
     {
+      stop_scheduler();
+
       pulsegrid::infrastructure::runtime::AppLogger::errorf(
           "bootstrap failed",
           "error", std::string(e.what()));
+
       return 1;
     }
   }
@@ -243,6 +230,47 @@ namespace pulsegrid::app
     }
 
     status_ws_gateway_->register_routes();
+  }
+
+  void AppBootstrap::start_scheduler()
+  {
+    if (scheduler_running_)
+    {
+      return;
+    }
+
+    scheduler_running_ = true;
+
+    scheduler_thread_ = std::thread([this]()
+                                    {
+    while (scheduler_running_)
+    {
+      try
+      {
+        (void)check_scheduler_->tick();
+      }
+      catch (const std::exception &e)
+      {
+        pulsegrid::infrastructure::runtime::AppLogger::errorf(
+            "scheduler tick failed",
+            "error", std::string(e.what()));
+      }
+
+      for (int i = 0; i < 50 && scheduler_running_; ++i)
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+    } });
+  }
+
+  void AppBootstrap::stop_scheduler()
+  {
+    scheduler_running_ = false;
+
+    if (scheduler_thread_.joinable())
+    {
+      scheduler_thread_.join();
+    }
   }
 
 } // namespace pulsegrid::app

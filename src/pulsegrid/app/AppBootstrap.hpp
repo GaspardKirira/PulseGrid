@@ -13,6 +13,8 @@
 #define PULSEGRID_APP_APP_BOOTSTRAP_HPP
 
 #include <memory>
+#include <atomic>
+#include <thread>
 
 #include <pulsegrid/app/MiddlewareRegistry.hpp>
 #include <pulsegrid/app/RouteRegistry.hpp>
@@ -63,6 +65,8 @@ namespace pulsegrid::app
     void initialize_registries();
     void initialize_http_app();
     void initialize_ws_app();
+    void start_scheduler();
+    void stop_scheduler();
 
   private:
     bool initialized_{false};
@@ -98,6 +102,9 @@ namespace pulsegrid::app
 
     std::unique_ptr<pulsegrid::app::MiddlewareRegistry> middleware_registry_;
     std::unique_ptr<pulsegrid::app::RouteRegistry> route_registry_;
+
+    std::atomic<bool> scheduler_running_{false};
+    std::thread scheduler_thread_{};
   };
 
 } // namespace pulsegrid::app

@@ -73,7 +73,7 @@ namespace pulsegrid::presentation::ws
 
     struct SessionEntry
     {
-      std::shared_ptr<vix::websocket::Session> session;
+      std::weak_ptr<vix::websocket::Session> session;
       SubscriptionState subscriptions;
     };
 

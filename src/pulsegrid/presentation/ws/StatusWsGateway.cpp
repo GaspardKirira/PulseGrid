@@ -75,12 +75,13 @@ namespace pulsegrid::presentation::ws
 
     for (auto &entry : sessions_)
     {
-      if (!entry.session || !entry.session->is_open())
+      auto session = entry.session.lock();
+      if (!session || !session->is_open())
       {
         continue;
       }
 
-      safe_send(*entry.session, payload);
+      safe_send(*session, payload);
     }
   }
 
@@ -92,14 +93,15 @@ namespace pulsegrid::presentation::ws
 
     for (auto &entry : sessions_)
     {
-      if (!entry.session || !entry.session->is_open())
+      auto session = entry.session.lock();
+      if (!session || !session->is_open())
       {
         continue;
       }
 
       if (entry.subscriptions.dashboard)
       {
-        safe_send(*entry.session, payload);
+        safe_send(*session, payload);
       }
     }
   }
@@ -114,14 +116,15 @@ namespace pulsegrid::presentation::ws
 
     for (auto &entry : sessions_)
     {
-      if (!entry.session || !entry.session->is_open())
+      auto session = entry.session.lock();
+      if (!session || !session->is_open())
       {
         continue;
       }
 
       if (entry.subscriptions.monitor_ids.find(monitor_id) != entry.subscriptions.monitor_ids.end())
       {
-        safe_send(*entry.session, payload);
+        safe_send(*session, payload);
       }
     }
   }
@@ -136,14 +139,15 @@ namespace pulsegrid::presentation::ws
 
     for (auto &entry : sessions_)
     {
-      if (!entry.session || !entry.session->is_open())
+      auto session = entry.session.lock();
+      if (!session || !session->is_open())
       {
         continue;
       }
 
       if (entry.subscriptions.monitor_slugs.find(slug) != entry.subscriptions.monitor_slugs.end())
       {
-        safe_send(*entry.session, payload);
+        safe_send(*session, payload);
       }
     }
   }
@@ -155,7 +159,8 @@ namespace pulsegrid::presentation::ws
     std::size_t count = 0;
     for (const auto &entry : sessions_)
     {
-      if (entry.session && entry.session->is_open())
+      auto session = entry.session.lock();
+      if (session && session->is_open())
       {
         ++count;
       }
@@ -175,13 +180,14 @@ namespace pulsegrid::presentation::ws
         sessions_.end(),
         [&session](const SessionEntry &entry)
         {
-          return entry.session.get() == &session;
+          auto sp = entry.session.lock();
+          return sp && sp.get() == &session;
         });
 
     if (it == sessions_.end())
     {
       sessions_.push_back(SessionEntry{
-          .session = std::move(shared),
+          .session = shared,
           .subscriptions = SubscriptionState{},
       });
     }
@@ -199,7 +205,8 @@ namespace pulsegrid::presentation::ws
             sessions_.end(),
             [&session](const SessionEntry &entry)
             {
-              return !entry.session || entry.session.get() == &session;
+              auto sp = entry.session.lock();
+              return !sp || sp.get() == &session;
             }),
         sessions_.end());
   }
@@ -302,7 +309,8 @@ namespace pulsegrid::presentation::ws
             sessions_.end(),
             [](const SessionEntry &entry)
             {
-              return !entry.session || !entry.session->is_open();
+              auto session = entry.session.lock();
+              return !session || !session->is_open();
             }),
         sessions_.end());
   }
@@ -391,7 +399,8 @@ namespace pulsegrid::presentation::ws
         sessions_.end(),
         [&session](SessionEntry &entry)
         {
-          return entry.session && entry.session.get() == &session;
+          auto sp = entry.session.lock();
+          return sp && sp.get() == &session;
         });
 
     if (it == sessions_.end())
@@ -410,7 +419,8 @@ namespace pulsegrid::presentation::ws
         sessions_.end(),
         [&session](const SessionEntry &entry)
         {
-          return entry.session && entry.session.get() == &session;
+          auto sp = entry.session.lock();
+          return sp && sp.get() == &session;
         });
 
     if (it == sessions_.end())
