@@ -107,7 +107,7 @@ Add a test endpoint:
 - Name: Example
 - Slug: example
 - URL: https://example.com
-- Interval: 10
+- Interval: 15
 
 Click **Create monitor**.
 
@@ -128,7 +128,7 @@ curl -X POST http://localhost:8080/api/monitors \
     "name": "Example",
     "slug": "example",
     "url": "https://example.com",
-    "interval_seconds": 10
+    "interval_seconds": 15
   }'
 ```
 
