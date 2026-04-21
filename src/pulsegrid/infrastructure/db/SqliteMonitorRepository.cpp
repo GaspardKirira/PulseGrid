@@ -189,6 +189,18 @@ namespace pulsegrid::infrastructure::db
   SqliteMonitorRepository::Monitor SqliteMonitorRepository::map_monitor(
       const vix::db::ResultRow &row)
   {
+    pulsegrid::domain::monitor::MonitorStatus status;
+
+    try
+    {
+      status =
+          pulsegrid::domain::monitor::monitor_status_from_string(row.getString(5));
+    }
+    catch (...)
+    {
+      status = pulsegrid::domain::monitor::MonitorStatus::Down;
+    }
+
     return Monitor(
         pulsegrid::domain::shared::EntityId(row.getString(0)),
         row.getString(1),
@@ -196,7 +208,7 @@ namespace pulsegrid::infrastructure::db
         pulsegrid::domain::shared::Url(row.getString(3)),
         pulsegrid::domain::monitor::CheckInterval(
             static_cast<int>(row.getInt64(4))),
-        pulsegrid::domain::monitor::monitor_status_from_string(row.getString(5)),
+        status,
         row.getInt64(6),
         row.getInt64(7));
   }

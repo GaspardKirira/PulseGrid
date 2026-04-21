@@ -37,6 +37,24 @@ namespace pulsegrid::infrastructure::db
   {
     try
     {
+      const auto status =
+          pulsegrid::domain::monitor::to_string(result.status());
+
+      if (result.status() == pulsegrid::domain::monitor::MonitorStatus::Down)
+      {
+        database_->exec(
+            "INSERT INTO check_results ("
+            "id, monitor_id, status, response_time_ms, error_message, checked_at_ms"
+            ") VALUES (?, ?, ?, ?, ?, ?)",
+            result.id().value(),
+            result.monitor_id().value(),
+            status,
+            nullptr,
+            result.error_message(),
+            result.checked_at_ms());
+        return;
+      }
+
       if (result.response_time().has_value())
       {
         database_->exec(
@@ -45,7 +63,7 @@ namespace pulsegrid::infrastructure::db
             ") VALUES (?, ?, ?, ?, ?, ?)",
             result.id().value(),
             result.monitor_id().value(),
-            pulsegrid::domain::monitor::to_string(result.status()),
+            status,
             result.response_time()->milliseconds(),
             result.error_message(),
             result.checked_at_ms());
@@ -58,7 +76,7 @@ namespace pulsegrid::infrastructure::db
             ") VALUES (?, ?, ?, ?, ?, ?)",
             result.id().value(),
             result.monitor_id().value(),
-            pulsegrid::domain::monitor::to_string(result.status()),
+            status,
             nullptr,
             result.error_message(),
             result.checked_at_ms());
@@ -70,7 +88,6 @@ namespace pulsegrid::infrastructure::db
           std::string("Failed to create check result: ") + e.what());
     }
   }
-
   std::optional<SqliteCheckResultRepository::CheckResult>
   SqliteCheckResultRepository::find_by_id(const EntityId &id) const
   {
@@ -180,9 +197,17 @@ namespace pulsegrid::infrastructure::db
         pulsegrid::domain::monitor::monitor_status_from_string(row.getString(2));
 
     std::optional<pulsegrid::domain::check::ResponseTime> response_time;
-    if (!row.isNull(3))
+
+    if (status == pulsegrid::domain::monitor::MonitorStatus::Down)
     {
-      response_time = pulsegrid::domain::check::ResponseTime(row.getInt64(3));
+      response_time = std::nullopt;
+    }
+    else
+    {
+      if (!row.isNull(3))
+      {
+        response_time = pulsegrid::domain::check::ResponseTime(row.getInt64(3));
+      }
     }
 
     return CheckResult(
