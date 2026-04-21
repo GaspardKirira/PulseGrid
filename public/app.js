@@ -22,8 +22,7 @@ function qs(selector) {
 
 function wsUrl() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const host = window.location.hostname;
-  return `${protocol}//${host}:9090${WS.endpoint}`;
+  return `${protocol}//${window.location.host}/ws`;
 }
 
 async function fetchJson(url, opts = {}) {

@@ -162,8 +162,7 @@ async function loadStatus() {
 
 function wsUrl() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const host = window.location.hostname;
-  return `${protocol}//${host}:9090${STATUS_WS.endpoint}`;
+  return `${protocol}//${window.location.host}/ws`;
 }
 
 function mergeMonitorUpdate(data) {
