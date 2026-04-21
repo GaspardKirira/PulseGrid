@@ -208,7 +208,7 @@ Build real systems. Keep them simple. Make them predictable.
 
 ## Author
 
-Gaspard Kirira
+Gaspard Kirira \
 https://github.com/GaspardKirira
 
 ## License
