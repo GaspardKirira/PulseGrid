@@ -16,12 +16,30 @@
 
 namespace pulsegrid::infrastructure::checker
 {
+  namespace
+  {
+    constexpr std::int64_t degraded_threshold_ms = 800;
+
+    void simulate_latency_for_test_url(const std::string &value)
+    {
+      if (value.find("slow-health") != std::string::npos)
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+        return;
+      }
+
+      if (value.find("degraded") != std::string::npos)
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(700));
+        return;
+      }
+    }
+  } // namespace
+
   HttpChecker::Result HttpChecker::check(
       const pulsegrid::domain::shared::Url &url) const
   {
     using namespace std::chrono;
-
-    const auto started_at = steady_clock::now();
 
     Result result{};
     const std::string &value = url.value();
@@ -31,38 +49,27 @@ namespace pulsegrid::infrastructure::checker
       result.outcome = Outcome::Down;
       result.status_code = 0;
       result.error_message = "unsupported URL scheme";
+      result.response_time_ms = 0;
+      return result;
     }
-    else if (value.find("slow-health") != std::string::npos)
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1200));
 
-      result.outcome = Outcome::Up;
-      result.status_code = 200;
-      result.error_message.clear();
-    }
-    else if (is_localhost_url(value))
-    {
-      result.outcome = Outcome::Up;
-      result.status_code = 200;
-      result.error_message.clear();
-    }
-    else if (value.find("degraded") != std::string::npos)
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(700));
+    const auto started_at = steady_clock::now();
 
-      result.outcome = Outcome::Degraded;
-      result.status_code = 200;
-      result.error_message = "service responded slowly or partially";
-    }
-    else if (value.find("down") != std::string::npos)
+    simulate_latency_for_test_url(value);
+
+    if (value.find("down") != std::string::npos)
     {
       result.outcome = Outcome::Down;
       result.status_code = 503;
       result.error_message = "service unavailable";
     }
+    else if (is_localhost_url(value))
+    {
+      result.status_code = 200;
+      result.error_message.clear();
+    }
     else if (starts_with(value, "http://") || starts_with(value, "https://"))
     {
-      result.outcome = Outcome::Up;
       result.status_code = 200;
       result.error_message.clear();
     }
@@ -71,11 +78,32 @@ namespace pulsegrid::infrastructure::checker
       result.outcome = Outcome::Down;
       result.status_code = 0;
       result.error_message = "invalid HTTP URL";
+      result.response_time_ms = 0;
+      return result;
     }
 
     const auto ended_at = steady_clock::now();
     result.response_time_ms =
         duration_cast<milliseconds>(ended_at - started_at).count();
+
+    if (result.status_code >= 500)
+    {
+      result.outcome = Outcome::Down;
+      if (result.error_message.empty())
+      {
+        result.error_message = "server error";
+      }
+    }
+    else if (result.response_time_ms >= degraded_threshold_ms)
+    {
+      result.outcome = Outcome::Degraded;
+      result.error_message = "response time exceeded degraded threshold";
+    }
+    else
+    {
+      result.outcome = Outcome::Up;
+      result.error_message.clear();
+    }
 
     return result;
   }
