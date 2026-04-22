@@ -228,5 +228,24 @@
   </div>
 
  <script type="module" src="/app.js?v=2"></script>
+
+<div id="confirm-modal" class="modal hidden">
+  <div class="modal-overlay"></div>
+
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modal-title">Confirm action</h3>
+    </div>
+
+    <div class="modal-body">
+      <p id="modal-message">Are you sure?</p>
+    </div>
+
+    <div class="modal-footer">
+      <button id="modal-cancel" class="btn btn-small">Cancel</button>
+      <button id="modal-confirm" class="btn btn-small btn-danger">Confirm</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -1,14 +1,14 @@
-# PulseGrid
+# Softadastra PulseGrid
 
 **Real-time service monitoring. Built with modern C++.**
 
-PulseGrid is a lightweight monitoring application designed to demonstrate how to build a real-world, production-style system using **Vix.cpp**.
+Softadastra PulseGrid is a lightweight monitoring application designed to demonstrate how to build a real-world, production-style system using **Vix.cpp**.
 
 It focuses on clarity, reliability, and architecture, not complexity.
 
-## What is PulseGrid?
+## What is Softadastra PulseGrid?
 
-PulseGrid lets you:
+Softadastra PulseGrid lets you:
 
 - Monitor HTTP endpoints
 - Track uptime and response time
@@ -20,7 +20,7 @@ It is intentionally simple, but architecturally serious.
 
 ## Why this project exists
 
-PulseGrid is not just another app.
+Softadastra PulseGrid is not just another app.
 
 It is a reference implementation showing:
 
@@ -33,7 +33,7 @@ No boilerplate. No hidden magic. Just clear systems.
 
 ## Architecture
 
-PulseGrid follows a strict layered architecture:
+Softadastra PulseGrid follows a strict layered architecture:
 
 ```text
 Domain         -> Business rules (pure C++)
@@ -185,7 +185,7 @@ No manual setup required.
 
 ## Real-time updates
 
-PulseGrid uses WebSocket for live updates:
+Softadastra PulseGrid uses WebSocket for live updates:
 
 - monitor status changes
 - incidents
@@ -195,7 +195,7 @@ The UI updates automatically without refresh.
 
 ## What this demonstrates
 
-PulseGrid proves that you can:
+Softadastra PulseGrid proves that you can:
 
 - Build backend systems in C++ without friction
 - Use modern architecture patterns cleanly

@@ -25,6 +25,37 @@ function wsUrl() {
   return `${protocol}//${window.location.host}/ws`;
 }
 
+let modalResolve = null;
+
+function openConfirmModal({ title, message }) {
+  const modal = qs("#confirm-modal");
+  const titleEl = qs("#modal-title");
+  const messageEl = qs("#modal-message");
+
+  if (!modal || !titleEl || !messageEl) return Promise.resolve(false);
+
+  titleEl.textContent = title;
+  messageEl.textContent = message;
+
+  modal.classList.remove("hidden");
+
+  return new Promise((resolve) => {
+    modalResolve = resolve;
+  });
+}
+
+function closeConfirmModal(result) {
+  const modal = qs("#confirm-modal");
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+
+  if (modalResolve) {
+    modalResolve(result);
+    modalResolve = null;
+  }
+}
+
 async function fetchJson(url, opts = {}) {
   const res = await fetch(API.base + url, {
     headers: {
@@ -174,12 +205,11 @@ function renderMonitor(monitor) {
   const status = (monitor.status || "unknown").toLowerCase();
   const latestCheck = monitor.latest_check;
   const openIncident = monitor.open_incident;
+  const isPaused = status === "paused";
 
-  const slugPart = monitor.slug
-    ? `<div class="meta" style="margin-top: 6px;">Slug: <a href="/status/${encodeURIComponent(
-        monitor.slug,
-      )}" style="color:#93c5fd;text-decoration:none;">${escapeHtml(monitor.slug)}</a></div>`
-    : "";
+  const href = monitor.slug
+    ? `/status/${encodeURIComponent(monitor.slug)}`
+    : "#";
 
   const responseTimePart =
     latestCheck && latestCheck.response_time_ms != null
@@ -196,20 +226,140 @@ function renderMonitor(monitor) {
       : "";
 
   return `
-    <div class="card" data-monitor-id="${escapeHtml(monitor.id || "")}">
-      <h3>${escapeHtml(monitor.name || "Unnamed monitor")}</h3>
-      <div class="meta">${escapeHtml(monitor.url || "")}</div>
-      <div class="meta" style="margin-top: 6px;">Interval: ${escapeHtml(
-        monitor.interval_seconds ?? "?",
-      )}s</div>
-      ${slugPart}
-      ${responseTimePart}
-      ${incidentPart}
-      <div class="status ${statusClass(status)}">
-        ${escapeHtml(status.toUpperCase())}
+    <article class="card monitor-card" data-monitor-id="${escapeHtml(
+      monitor.id || "",
+    )}">
+      <a
+        class="card-link-area"
+        href="${href}"
+        aria-label="Open monitor ${escapeHtml(monitor.name || "monitor")}"
+      >
+        <h3>${escapeHtml(monitor.name || "Unnamed monitor")}</h3>
+        <div class="meta">${escapeHtml(monitor.url || "")}</div>
+        <div class="meta" style="margin-top: 6px;">Interval: ${escapeHtml(
+          monitor.interval_seconds ?? "?",
+        )}s</div>
+        <div class="meta" style="margin-top: 6px;">Slug: ${escapeHtml(
+          monitor.slug || "",
+        )}</div>
+        ${responseTimePart}
+        ${incidentPart}
+        <div class="status ${statusClass(status)}">
+          ${escapeHtml(status.toUpperCase())}
+        </div>
+      </a>
+
+      <div class="card-actions">
+        ${
+          isPaused
+            ? `<button class="btn btn-small btn-success" type="button" data-action="resume" data-monitor-id="${escapeHtml(
+                monitor.id || "",
+              )}">Resume</button>`
+            : `<button class="btn btn-small btn-warning" type="button" data-action="pause" data-monitor-id="${escapeHtml(
+                monitor.id || "",
+              )}">Pause</button>`
+        }
+
+        <button
+          class="btn btn-small btn-danger"
+          type="button"
+          data-action="delete"
+          data-monitor-id="${escapeHtml(monitor.id || "")}"
+          data-monitor-name="${escapeHtml(monitor.name || "this monitor")}"
+        >
+          Delete
+        </button>
       </div>
-    </div>
+    </article>
   `;
+}
+
+function initModal() {
+  const cancel = qs("#modal-cancel");
+  const confirm = qs("#modal-confirm");
+  const overlay = qs(".modal-overlay");
+
+  cancel?.addEventListener("click", () => closeConfirmModal(false));
+  confirm?.addEventListener("click", () => closeConfirmModal(true));
+  overlay?.addEventListener("click", () => closeConfirmModal(false));
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeConfirmModal(false);
+    }
+  });
+}
+
+async function pauseMonitor(monitorId) {
+  await fetchJson(`${API.monitors}/${encodeURIComponent(monitorId)}/pause`, {
+    method: "POST",
+  });
+
+  await loadMonitors();
+  await loadSummary();
+}
+
+async function resumeMonitor(monitorId) {
+  await fetchJson(`${API.monitors}/${encodeURIComponent(monitorId)}/resume`, {
+    method: "POST",
+  });
+
+  await loadMonitors();
+  await loadSummary();
+}
+
+async function deleteMonitor(monitorId) {
+  await fetchJson(`${API.monitors}/${encodeURIComponent(monitorId)}`, {
+    method: "DELETE",
+  });
+
+  state.monitors = state.monitors.filter(
+    (item) => String(item.id) !== String(monitorId),
+  );
+  renderMonitors();
+  updateSummaryFromMonitors();
+}
+
+async function handleGridClick(event) {
+  const button = event.target.closest("button[data-action]");
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.action;
+  const monitorId = button.dataset.monitorId;
+  const monitorName = button.dataset.monitorName || "this monitor";
+
+  if (!action || !monitorId) {
+    return;
+  }
+
+  try {
+    if (action === "pause") {
+      await pauseMonitor(monitorId);
+      return;
+    }
+
+    if (action === "resume") {
+      await resumeMonitor(monitorId);
+      return;
+    }
+
+    if (action === "delete") {
+      const confirmed = await openConfirmModal({
+        title: "Delete monitor",
+        message: `Delete ${monitorName}? This action cannot be undone.`,
+      });
+
+      if (!confirmed) {
+        return;
+      }
+
+      await deleteMonitor(monitorId);
+    }
+  } catch (e) {
+    alert(e.message || "Action failed");
+  }
 }
 
 function renderMonitors() {
@@ -454,9 +604,16 @@ async function init() {
   await loadMonitors();
   connectWebSocket();
 
+  initModal();
+
   const form = qs("#create-monitor-form");
   if (form) {
     form.addEventListener("submit", handleCreateMonitor);
+  }
+
+  const grid = qs("#grid");
+  if (grid) {
+    grid.addEventListener("click", handleGridClick);
   }
 }
 
