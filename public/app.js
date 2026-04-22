@@ -320,7 +320,7 @@ async function deleteMonitor(monitorId) {
     (item) => String(item.id) !== String(monitorId),
   );
   renderMonitors();
-  updateSummaryFromMonitors();
+  await loadSummary();
 }
 
 async function handleGridClick(event) {
@@ -414,42 +414,6 @@ function upsertMonitor(monitor) {
   renderMonitors();
 }
 
-function updateSummaryFromMonitors() {
-  const totals = {
-    total_monitors: state.monitors.length,
-    up_monitors: 0,
-    down_monitors: 0,
-    degraded_monitors: 0,
-    paused_monitors: 0,
-    open_incidents: 0,
-  };
-
-  for (const monitor of state.monitors) {
-    switch ((monitor.status || "").toLowerCase()) {
-      case "up":
-        totals.up_monitors += 1;
-        break;
-      case "down":
-        totals.down_monitors += 1;
-        break;
-      case "degraded":
-        totals.degraded_monitors += 1;
-        break;
-      case "paused":
-        totals.paused_monitors += 1;
-        break;
-      default:
-        break;
-    }
-
-    if (monitor.open_incident) {
-      totals.open_incidents += 1;
-    }
-  }
-
-  renderSummary(totals);
-}
-
 function handleWsMessage(raw) {
   let msg;
 
@@ -486,7 +450,7 @@ function handleWsMessage(raw) {
     msg.data
   ) {
     upsertMonitor(msg.data);
-    updateSummaryFromMonitors();
+    void loadSummary();
     return;
   }
 
@@ -592,7 +556,7 @@ async function handleCreateMonitor(event) {
 
     if (createdMonitor) {
       upsertMonitor(createdMonitor);
-      updateSummaryFromMonitors();
+      await loadSummary();
     } else {
       await loadMonitors();
       await loadSummary();
