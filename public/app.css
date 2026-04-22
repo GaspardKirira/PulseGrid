@@ -690,3 +690,18 @@ a {
   justify-content: flex-end;
   gap: 10px;
 }
+/* =========================
+   Header actions (API Docs)
+   ========================= */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}

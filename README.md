@@ -90,6 +90,31 @@ vix run
 http://localhost:8080
 ```
 
+## API Documentation (OpenAPI + Swagger UI)
+
+Softadastra PulseGrid exposes a full interactive API documentation, powered by Vix.
+
+Open:
+
+```
+http://localhost:8080/docs
+```
+
+This gives you:
+
+- Full HTTP API documentation
+- WebSocket endpoints documentation
+- Interactive request testing
+- No external dependencies (offline Swagger UI)
+
+The OpenAPI specification is also available at:
+
+```
+http://localhost:8080/openapi.json
+```
+
+Everything is generated automatically from the application routes.
+
 ## How to test the application
 
 ### Option 1 - Use the UI (recommended)
