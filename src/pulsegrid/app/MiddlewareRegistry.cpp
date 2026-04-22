@@ -75,8 +75,6 @@ namespace pulsegrid::app
   void MiddlewareRegistry::register_api(vix::App &app) const
   {
     using namespace vix::middleware::app;
-
-    install(app, "/api/", rate_limit_dev(120, std::chrono::minutes(1)));
   }
 
 } // namespace pulsegrid::app

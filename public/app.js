@@ -487,13 +487,14 @@ function handleWsMessage(raw) {
     return;
   }
 
-  if (
-    msg.type === "check.recorded" ||
-    msg.type === "incident.opened" ||
-    msg.type === "incident.resolved"
-  ) {
+  if (msg.type === "check.recorded") {
     void loadSummary();
-    void loadMonitors();
+    return;
+  }
+
+  if (msg.type === "incident.opened" || msg.type === "incident.resolved") {
+    void loadSummary();
+    return;
   }
 }
 
