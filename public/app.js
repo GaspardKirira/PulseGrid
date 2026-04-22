@@ -65,16 +65,19 @@ async function fetchJson(url, opts = {}) {
     ...opts,
   });
 
+  const rawText = await res.text();
   let data = null;
 
   try {
-    data = await res.json();
+    data = rawText ? JSON.parse(rawText) : null;
   } catch {
     data = null;
   }
 
   if (!res.ok) {
-    throw new Error(data?.error || data?.message || "Request failed");
+    throw new Error(
+      data?.error || data?.message || rawText || `HTTP ${res.status}`,
+    );
   }
 
   return data;
