@@ -498,8 +498,17 @@ function connectWebSocket() {
     const socket = new WebSocket(wsUrl());
     state.ws = socket;
 
+    let pingInterval = null;
+
     socket.addEventListener("open", () => {
       console.log("[PulseGrid] WS connected");
+      reconnectAttempts = 0;
+
+      pingInterval = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "ping" }));
+        }
+      }, 30000);
     });
 
     socket.addEventListener("message", (event) => {
@@ -508,13 +517,14 @@ function connectWebSocket() {
 
     socket.addEventListener("close", () => {
       console.log("[PulseGrid] WS disconnected");
+
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
+
       state.ws = null;
       scheduleReconnect();
-    });
-
-    socket.addEventListener("open", () => {
-      console.log("[PulseGrid] WS connected");
-      reconnectAttempts = 0; // reset backoff
     });
 
     socket.addEventListener("error", () => {
