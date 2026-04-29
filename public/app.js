@@ -7,8 +7,11 @@ const API = {
 
 const WS = {
   endpoint: "/",
-  reconnectDelayMs: 3000,
+  reconnectDelayMs: 5000,
+  maxReconnectDelayMs: 30000,
 };
+
+let reconnectAttempts = 0;
 
 const state = {
   monitors: [],
@@ -466,14 +469,20 @@ function handleWsMessage(raw) {
 }
 
 function scheduleReconnect() {
-  if (state.reconnectTimer) {
-    return;
-  }
+  if (state.reconnectTimer) return;
+
+  const delay = Math.min(
+    WS.reconnectDelayMs * Math.pow(2, reconnectAttempts),
+    WS.maxReconnectDelayMs,
+  );
+
+  console.log(`[PulseGrid] reconnect in ${delay}ms`);
 
   state.reconnectTimer = window.setTimeout(() => {
     state.reconnectTimer = null;
+    reconnectAttempts++;
     connectWebSocket();
-  }, WS.reconnectDelayMs);
+  }, delay);
 }
 
 function connectWebSocket() {
@@ -501,6 +510,11 @@ function connectWebSocket() {
       console.log("[PulseGrid] WS disconnected");
       state.ws = null;
       scheduleReconnect();
+    });
+
+    socket.addEventListener("open", () => {
+      console.log("[PulseGrid] WS connected");
+      reconnectAttempts = 0; // reset backoff
     });
 
     socket.addEventListener("error", () => {
