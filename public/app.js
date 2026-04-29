@@ -453,17 +453,14 @@ function handleWsMessage(raw) {
     msg.data
   ) {
     upsertMonitor(msg.data);
-    void loadSummary();
     return;
   }
 
   if (msg.type === "check.recorded") {
-    void loadSummary();
     return;
   }
 
   if (msg.type === "incident.opened" || msg.type === "incident.resolved") {
-    void loadSummary();
     return;
   }
 }
