@@ -14,6 +14,41 @@ function statusQs(id) {
   return document.getElementById(id);
 }
 
+function showStatusSkeleton(show) {
+  const skeleton = statusQs("status-skeleton");
+
+  if (!skeleton) {
+    return;
+  }
+
+  skeleton.style.display = show ? "grid" : "none";
+}
+
+function setFooterWsStatus(status) {
+  const box = statusQs("footer-ws");
+  const label = statusQs("footer-ws-label");
+
+  if (!box || !label) {
+    return;
+  }
+
+  box.classList.remove("ws-connected", "ws-disconnected");
+
+  if (status === "connected") {
+    box.classList.add("ws-connected");
+    label.textContent = "Connected";
+    return;
+  }
+
+  if (status === "disconnected") {
+    box.classList.add("ws-disconnected");
+    label.textContent = "Disconnected";
+    return;
+  }
+
+  label.textContent = "Connecting…";
+}
+
 function getSlugFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
   return parts.length >= 2 ? decodeURIComponent(parts[1]) : "";
@@ -79,6 +114,21 @@ function hideError() {
   box.classList.add("hidden");
 }
 
+function statusPillClass(status) {
+  switch ((status || "").toLowerCase()) {
+    case "up":
+      return "sp-pill--up";
+    case "down":
+      return "sp-pill--down";
+    case "degraded":
+      return "sp-pill--degraded";
+    case "paused":
+      return "sp-pill--paused";
+    default:
+      return "sp-pill--unknown";
+  }
+}
+
 function renderStatus(view) {
   statusState.currentView = view;
 
@@ -101,7 +151,7 @@ function renderStatus(view) {
 
   const pill = statusQs("monitor-status-pill");
   pill.textContent = resolvedStatus.toUpperCase();
-  pill.className = `status-pill ${statusClass(resolvedStatus)}`;
+  pill.className = `sp-pill ${statusPillClass(resolvedStatus)}`;
 
   statusQs("latest-check-status").textContent = latestCheck?.status
     ? latestCheck.status.toUpperCase()
@@ -131,9 +181,11 @@ function renderStatus(view) {
 
 async function loadStatus() {
   hideError();
+  showStatusSkeleton(true);
 
   const slug = getSlugFromPath();
   if (!slug) {
+    showStatusSkeleton(false);
     showError("Missing monitor slug in URL.");
     return;
   }
@@ -143,6 +195,7 @@ async function loadStatus() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      showStatusSkeleton(false);
       showError(data?.error || "Failed to load public status.");
       return;
     }
@@ -150,6 +203,7 @@ async function loadStatus() {
     const data = await response.json();
 
     if (!data || !data.monitor) {
+      showStatusSkeleton(false);
       showError("Invalid response format.");
       return;
     }
@@ -158,9 +212,10 @@ async function loadStatus() {
   } catch (error) {
     console.error("[PulseGrid Status] loadStatus failed:", error);
     showError("Network error while loading status.");
+  } finally {
+    showStatusSkeleton(false);
   }
 }
-
 function wsUrl() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/ws`;
@@ -370,6 +425,7 @@ function connectWebSocket() {
 
   let socket;
   try {
+    setFooterWsStatus("connecting");
     socket = new WebSocket(wsUrl());
   } catch {
     scheduleReconnect();
@@ -379,6 +435,7 @@ function connectWebSocket() {
   statusState.ws = socket;
 
   socket.addEventListener("open", () => {
+    setFooterWsStatus("connected");
     startPing(socket);
 
     const slug = getSlugFromPath();
@@ -397,6 +454,7 @@ function connectWebSocket() {
   });
 
   socket.addEventListener("close", () => {
+    setFooterWsStatus("disconnected");
     stopPing();
     statusState.ws = null;
     if (!document.hidden) {
@@ -405,6 +463,7 @@ function connectWebSocket() {
   });
 
   socket.addEventListener("error", () => {
+    setFooterWsStatus("disconnected");
     stopPing();
   });
 }
