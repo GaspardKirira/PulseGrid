@@ -3,58 +3,128 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PulseGrid Status</title>
-
-  <link rel="stylesheet" href="/status.css?v=3" />
+  <title>Monitor Status — PulseGrid</title>
+  <meta name="theme-color" content="#080b10" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/status.css?v=4" />
 </head>
-
 <body>
-  <div class="status-page">
-    <header class="status-header">
-      <div class="status-header__inner">
-        <strong class="status-brand">PulseGrid</strong>
-        <a href="/" class="status-back-link">← Dashboard</a>
+
+<div class="ambient" aria-hidden="true">
+  <div class="ambient__orb ambient__orb--1"></div>
+  <div class="ambient__orb ambient__orb--2"></div>
+  <div class="ambient__grid"></div>
+</div>
+
+<div class="sp">
+
+  <!-- Header -->
+  <header class="sp-header">
+    <div class="sp-header__inner">
+      <a href="/" class="sp-brand">
+        <div class="sp-brand__logo">PG</div>
+        <span class="sp-brand__name">PulseGrid</span>
+      </a>
+      <a href="/" class="sp-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Dashboard
+      </a>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="sp-main">
+
+    <!-- Error -->
+    <div id="error-box" class="sp-error hidden" role="alert">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="error-text">Unknown error</span>
+    </div>
+
+    <!-- Skeleton loader -->
+    <div id="status-skeleton" class="sp-skeleton">
+      <div class="skel skel--hero"></div>
+      <div class="skel-metrics">
+        <div class="skel skel--card"></div>
+        <div class="skel skel--card"></div>
+        <div class="skel skel--card"></div>
       </div>
-    </header>
+    </div>
 
-    <main class="status-container">
-      <div id="error-box" class="error-box hidden"></div>
+    <!-- Hero -->
+    <section id="hero" class="sp-hero hidden">
+      <div class="sp-hero__top">
+        <div class="sp-hero__info">
+          <span class="sp-eyebrow">Monitor Status</span>
+          <h1 id="monitor-name" class="sp-hero__title">—</h1>
+          <div id="monitor-url"  class="sp-hero__url">—</div>
+          <div id="monitor-meta" class="sp-hero__meta">—</div>
+        </div>
+        <div id="monitor-status-pill" class="sp-pill sp-pill--unknown">UNKNOWN</div>
+      </div>
 
-      <section id="hero" class="status-hero hidden">
-        <h1 id="monitor-name" class="status-hero__title">Monitor</h1>
-        <div id="monitor-url" class="status-subtle"></div>
-        <div id="monitor-meta" class="status-subtle status-subtle--spaced"></div>
-        <div id="monitor-status-pill" class="status-pill">UNKNOWN</div>
-      </section>
+      <!-- Uptime bar placeholder -->
+      <div class="sp-uptime-bar" aria-label="Live status indicator">
+        <div class="sp-uptime-bar__fill" id="uptime-fill"></div>
+      </div>
+    </section>
 
-      <section id="metrics" class="status-metrics-grid hidden">
-        <article class="status-card">
-          <h2 class="status-card__title">Latest check</h2>
-          <div id="latest-check-status" class="status-card__value">—</div>
-          <div class="status-card__label">Current check result</div>
-        </article>
+    <!-- Metrics -->
+    <section id="metrics" class="sp-metrics hidden">
+      <article class="sp-card sp-card--metric">
+        <div class="sp-card__icon sp-card__icon--check" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="sp-card__body">
+          <div id="latest-check-status" class="sp-card__value">—</div>
+          <div class="sp-card__label">Latest check result</div>
+        </div>
+      </article>
 
-        <article class="status-card">
-          <h2 class="status-card__title">Response time</h2>
-          <div id="response-time" class="status-card__value">—</div>
-          <div class="status-card__label">Measured on the latest check</div>
-        </article>
+      <article class="sp-card sp-card--metric">
+        <div class="sp-card__icon sp-card__icon--speed" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div class="sp-card__body">
+          <div id="response-time" class="sp-card__value">—</div>
+          <div class="sp-card__label">Response time</div>
+        </div>
+      </article>
 
-        <article class="status-card">
-          <h2 class="status-card__title">Checked at</h2>
-          <div id="checked-at" class="status-card__value">—</div>
-          <div class="status-card__label">Last recorded check</div>
-        </article>
-      </section>
+      <article class="sp-card sp-card--metric">
+        <div class="sp-card__icon sp-card__icon--time" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="sp-card__body">
+          <div id="checked-at" class="sp-card__value sp-card__value--mono">—</div>
+          <div class="sp-card__label">Last checked</div>
+        </div>
+      </article>
+    </section>
 
-      <section id="incident-box" class="status-incident hidden">
-        <h2 class="status-incident__title">Open incident</h2>
-        <div id="incident-message" class="status-incident__message"></div>
-        <div id="incident-started" class="status-subtle"></div>
-      </section>
-    </main>
-  </div>
+    <!-- Incident -->
+    <section id="incident-box" class="sp-incident hidden" role="alert">
+      <div class="sp-incident__header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <strong>Open Incident</strong>
+      </div>
+      <div id="incident-message" class="sp-incident__msg">—</div>
+      <div id="incident-started"  class="sp-incident__meta">—</div>
+    </section>
 
-  <script src="/status.js?v=3"></script>
+  </main>
+
+  <footer class="sp-footer">
+    <span>Powered by <strong>PulseGrid</strong> · Built with Vix.cpp</span>
+    <span class="sp-footer__ws" id="footer-ws">
+      <span class="sp-footer__dot"></span>
+      <span id="footer-ws-label">Connecting…</span>
+    </span>
+  </footer>
+</div>
+
+<script src="/status.js?v=4"></script>
 </body>
 </html>

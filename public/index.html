@@ -1,263 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Basic -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>PulseGrid Real-time Monitoring Built with Vix.cpp</title>
-
-  <!-- Primary SEO -->
-  <meta
-    name="description"
-    content="PulseGrid is a real-time service monitoring system built with Vix.cpp. Monitor uptime, track latency, detect incidents, and stream live updates with high-performance C++."
-  />
-
-  <!-- Favicon -->
-  <link
-    rel="icon"
-    type="image/png"
-    sizes="192x192"
-    href="https://res.cloudinary.com/dwjbed2xb/image/upload/v1767987143/android-chrome-192x192_woo6gl.png"
-  />
-
-  <!-- Theme -->
-  <meta name="theme-color" content="#0b0e14" />
-
-  <!-- Open Graph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="PulseGrid" />
-  <meta property="og:title" content="PulseGrid Real-time Monitoring Built with Vix.cpp" />
-  <meta
-    property="og:description"
-    content="Monitor HTTP services, track uptime, detect incidents, and stream real-time updates using Vix.cpp."
-  />
-  <meta property="og:url" content="https://pulsegrid.dev" />
-  <meta
-    property="og:image"
-    content="https://res.cloudinary.com/dwjbed2xb/image/upload/v1776776104/readtime-dashboard_ezk245.png"
-  />
-
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="PulseGrid Real-time Monitoring Built with Vix.cpp" />
-  <meta
-    name="twitter:description"
-    content="High-performance real-time monitoring system built in C++ with Vix.cpp."
-  />
-  <meta
-    name="twitter:image"
-    content="https://res.cloudinary.com/dwjbed2xb/image/upload/v1776776104/readtime-dashboard_ezk245.png"
-  />
-  <meta name="twitter:site" content="@vix_cpp" />
-
-  <!-- PWA / Mobile -->
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="/app.css?v=9" />
+  <title>PulseGrid — Real-time Monitoring</title>
+  <meta name="description" content="PulseGrid is a real-time service monitoring system built with Vix.cpp." />
+  <meta name="theme-color" content="#080b10" />
+  <link rel="icon" type="image/png" sizes="192x192" href="https://res.cloudinary.com/dwjbed2xb/image/upload/v1767987143/android-chrome-192x192_woo6gl.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/app.css?v=10" />
 </head>
-
 <body>
-  <div class="page-shell">
-    <header class="site-header">
-      <div class="header-content">
-        <div class="brand-block">
-          <div class="brand-badge">PG</div>
 
-          <div class="brand-text">
-            <p class="eyebrow">Built with Vix</p>
-            <h1 class="site-title">Softadastra PulseGrid</h1>
-            <p class="subtitle">
-                Softadastra PulseGrid is a real-time monitoring app powered by Vix, built to track uptime, incidents, and live status updates.
+<!-- Ambient background -->
+<div class="ambient" aria-hidden="true">
+  <div class="ambient__orb ambient__orb--1"></div>
+  <div class="ambient__orb ambient__orb--2"></div>
+  <div class="ambient__orb ambient__orb--3"></div>
+  <div class="ambient__grid"></div>
+</div>
 
-            <br />
-            <a href="/docs" target="_blank" style="color: #3b82f6;">Explore API →</a>
-            </p>
-          </div>
+<div class="page-shell">
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand__logo">
+          <span class="brand__pulse" aria-hidden="true"></span>
+          PG
         </div>
-
-        <div class="header-actions">
-          <a href="/docs" class="btn btn-small btn-dev" target="_blank" style="color: #3b82f6;">
-            ⚙️ API Docs
-          </a>
-
-          <span class="version-badge" id="meta-version">v?</span>
+        <div class="brand__info">
+          <span class="brand__built">Built with Vix.cpp</span>
+          <h1 class="brand__name">PulseGrid</h1>
         </div>
       </div>
-    </header>
+      <nav class="header-nav">
+        <a href="/docs" class="nav-link" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          API Docs
+        </a>
+        <div class="version-chip" id="meta-version">
+          <span class="version-chip__dot"></span>
+          v?
+        </div>
+      </nav>
+    </div>
+  </header>
 
-    <main class="main-content">
-      <section class="hero-summary" aria-label="System summary">
-        <div id="summary" class="summary-box">
-          <div class="summary-head">
-            <div>
-              <p class="summary-kicker">System overview</p>
-              <h2 class="summary-title">Monitoring summary</h2>
-            </div>
+  <main class="main">
+
+    <!-- SUMMARY BAR -->
+    <section class="summary-section" aria-label="System summary">
+      <div class="summary-bar">
+        <div class="summary-bar__label">
+          <span class="summary-bar__eyebrow">Live overview</span>
+          <h2 class="summary-bar__title">System Status</h2>
+        </div>
+        <div class="summary-bar__stats">
+          <div class="stat-chip">
+            <span class="stat-chip__num" id="summary-total">—</span>
+            <span class="stat-chip__lbl">Total</span>
           </div>
-
-          <div class="summary-stats">
-            <div class="summary-stat">
-              <span class="summary-stat__label">Total</span>
-              <strong id="summary-total" class="summary-stat__value">0</strong>
-            </div>
-
-            <div class="summary-stat summary-stat--up">
-              <span class="summary-stat__label">Up</span>
-              <strong id="summary-up" class="summary-stat__value">0</strong>
-            </div>
-
-            <div class="summary-stat summary-stat--down">
-              <span class="summary-stat__label">Down</span>
-              <strong id="summary-down" class="summary-stat__value">0</strong>
-            </div>
-
-            <div class="summary-stat summary-stat--degraded">
-              <span class="summary-stat__label">Degraded</span>
-              <strong id="summary-degraded" class="summary-stat__value">0</strong>
-            </div>
-
-            <div class="summary-stat summary-stat--paused">
-              <span class="summary-stat__label">Paused</span>
-              <strong id="summary-paused" class="summary-stat__value">0</strong>
-            </div>
-
-            <div class="summary-stat summary-stat--incident">
-              <span class="summary-stat__label">Open incidents</span>
-              <strong id="summary-incidents" class="summary-stat__value">0</strong>
-            </div>
+          <div class="stat-chip stat-chip--up">
+            <span class="stat-chip__dot"></span>
+            <span class="stat-chip__num" id="summary-up">—</span>
+            <span class="stat-chip__lbl">Up</span>
+          </div>
+          <div class="stat-chip stat-chip--down">
+            <span class="stat-chip__dot"></span>
+            <span class="stat-chip__num" id="summary-down">—</span>
+            <span class="stat-chip__lbl">Down</span>
+          </div>
+          <div class="stat-chip stat-chip--degraded">
+            <span class="stat-chip__dot"></span>
+            <span class="stat-chip__num" id="summary-degraded">—</span>
+            <span class="stat-chip__lbl">Degraded</span>
+          </div>
+          <div class="stat-chip stat-chip--paused">
+            <span class="stat-chip__dot"></span>
+            <span class="stat-chip__num" id="summary-paused">—</span>
+            <span class="stat-chip__lbl">Paused</span>
+          </div>
+          <div class="stat-chip stat-chip--incident">
+            <span class="stat-chip__dot"></span>
+            <span class="stat-chip__num" id="summary-incidents">—</span>
+            <span class="stat-chip__lbl">Incidents</span>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="card">
-        <h2>Developer</h2>
-        <a href="/docs"  style="color: #3b82f6;">API Docs</a>
-      </section>
+    <!-- LAYOUT -->
+    <div class="layout">
 
-      <section class="layout-grid">
-        <aside class="panel form-panel" aria-labelledby="create-monitor-title">
-          <div class="panel-head">
-            <p class="section-kicker">New monitor</p>
-            <h2 id="create-monitor-title">Create monitor</h2>
-            <p class="section-text">
-              Add a new endpoint to track uptime, latency, and incidents.
-            </p>
-          </div>
+      <!-- FORM PANEL -->
+      <aside class="panel panel--form" aria-labelledby="create-title">
+        <div class="panel__head">
+          <span class="panel__eyebrow">Add endpoint</span>
+          <h2 id="create-title" class="panel__title">New Monitor</h2>
+          <p class="panel__desc">Track uptime, latency, and incidents for any HTTP endpoint.</p>
+        </div>
 
-          <form id="create-monitor-form" class="monitor-form" novalidate>
-            <div class="form-grid">
-              <div class="field">
-                <label for="monitor-name">Name</label>
-                <input
-                  id="monitor-name"
-                  name="name"
-                  type="text"
-                  placeholder="Local Vix Health"
-                  maxlength="120"
-                  autocomplete="off"
-                  required
-                />
-              </div>
-
-              <div class="field">
-                <label for="monitor-slug">Slug</label>
-                <input
-                  id="monitor-slug"
-                  name="slug"
-                  type="text"
-                  placeholder="local-vix-health"
-                  maxlength="120"
-                  pattern="[a-z0-9_-]+"
-                  autocomplete="off"
-                  spellcheck="false"
-                  required
-                />
-                <small class="field-hint">
-                  Use lowercase letters, numbers, "-" or "_".
-                </small>
-              </div>
-
-              <div class="field field-full">
-                <label for="monitor-url">URL</label>
-                <input
-                  id="monitor-url"
-                  name="url"
-                  type="url"
-                  placeholder="http://127.0.0.1:3000/health"
-                  inputmode="url"
-                  autocomplete="off"
-                  spellcheck="false"
-                  required
-                />
-                <small class="field-hint">
-                  Must start with http:// or https://
-                </small>
-              </div>
-
-              <div class="field">
-                <label for="monitor-interval">Interval (seconds)</label>
-                <input
-                  id="monitor-interval"
-                  name="interval_seconds"
-                  type="number"
-                  min="15"
-                  max="3600"
-                  step="1"
-                  value="60"
-                  required
-                />
-                <small class="field-hint">
-                  Allowed range: 15 to 3600 seconds.
-                </small>
+        <form id="create-monitor-form" class="mform" novalidate>
+          <div class="mform__row">
+            <div class="mfield">
+              <label class="mfield__label" for="monitor-name">Name</label>
+              <div class="mfield__wrap">
+                <svg class="mfield__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <input id="monitor-name" name="name" type="text" placeholder="Vix Health Check" maxlength="120" autocomplete="off" required />
               </div>
             </div>
-
-            <div class="form-footer">
-              <button class="btn btn-primary" type="submit">Create monitor</button>
-              <div id="form-message" class="form-message" aria-live="polite"></div>
-            </div>
-          </form>
-        </aside>
-
-        <section class="panel monitors-panel" aria-labelledby="monitors-title">
-          <div class="panel-head monitors-head">
-            <div>
-              <p class="section-kicker">Active endpoints</p>
-              <h2 id="monitors-title">Monitors</h2>
-              <p class="section-text">
-                Live status of all registered services.
-              </p>
+            <div class="mfield">
+              <label class="mfield__label" for="monitor-slug">Slug</label>
+              <div class="mfield__wrap">
+                <svg class="mfield__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <input id="monitor-slug" name="slug" type="text" placeholder="vix-health" maxlength="120" pattern="[a-z0-9_-]+" autocomplete="off" spellcheck="false" required />
+              </div>
+              <span class="mfield__hint">Lowercase, numbers, - or _</span>
             </div>
           </div>
 
-          <div id="grid" class="grid"></div>
-        </section>
+          <div class="mfield mfield--full">
+            <label class="mfield__label" for="monitor-url">Endpoint URL</label>
+            <div class="mfield__wrap">
+              <svg class="mfield__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <input id="monitor-url" name="url" type="url" placeholder="https://api.example.com/health" inputmode="url" autocomplete="off" spellcheck="false" required />
+            </div>
+            <span class="mfield__hint">Must start with http:// or https://</span>
+          </div>
+
+          <div class="mfield">
+            <label class="mfield__label" for="monitor-interval">Interval (seconds)</label>
+            <div class="mfield__wrap">
+              <svg class="mfield__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <input id="monitor-interval" name="interval_seconds" type="number" min="15" max="3600" step="1" value="60" required />
+            </div>
+            <span class="mfield__hint">Range: 15 – 3600 s</span>
+          </div>
+
+          <div class="mform__footer">
+            <button class="btn btn--primary" type="submit">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Create Monitor
+            </button>
+            <div id="form-message" class="form-msg" aria-live="polite"></div>
+          </div>
+        </form>
+      </aside>
+
+      <!-- MONITORS PANEL -->
+      <section class="panel panel--monitors" aria-labelledby="monitors-title">
+        <div class="panel__head panel__head--row">
+          <div>
+            <span class="panel__eyebrow">Live endpoints</span>
+            <h2 id="monitors-title" class="panel__title">Monitors</h2>
+          </div>
+          <div class="ws-status" id="ws-status" aria-live="polite">
+            <span class="ws-status__dot"></span>
+            <span class="ws-status__label">Connecting…</span>
+          </div>
+        </div>
+
+        <!-- Skeleton loader -->
+        <div id="grid-skeleton" class="mgrid mgrid--skeleton" aria-hidden="true">
+          <div class="mskel"></div>
+          <div class="mskel"></div>
+          <div class="mskel"></div>
+        </div>
+
+        <div id="grid" class="mgrid" aria-live="polite"></div>
       </section>
-    </main>
-  </div>
 
- <script type="module" src="/app.js?v=12"></script>
-
-<div id="confirm-modal" class="modal hidden">
-  <div class="modal-overlay"></div>
-
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 id="modal-title">Confirm action</h3>
     </div>
+  </main>
+</div>
 
-    <div class="modal-body">
-      <p id="modal-message">Are you sure?</p>
+<!-- CONFIRM MODAL -->
+<div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal__overlay"></div>
+  <div class="modal__box">
+    <div class="modal__icon" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     </div>
-
-    <div class="modal-footer">
-      <button id="modal-cancel" class="btn btn-small">Cancel</button>
-      <button id="modal-confirm" class="btn btn-small btn-danger">Confirm</button>
+    <h3 id="modal-title" class="modal__title">Confirm action</h3>
+    <p id="modal-message" class="modal__body">Are you sure?</p>
+    <div class="modal__actions">
+      <button id="modal-cancel" class="btn btn--ghost">Cancel</button>
+      <button id="modal-confirm" class="btn btn--danger">Delete</button>
     </div>
   </div>
 </div>
+
+<script type="module" src="/app.js?v=13"></script>
 </body>
 </html>
