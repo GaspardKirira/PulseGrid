@@ -6,9 +6,7 @@ const API = {
 };
 
 const WS = {
-  // Délai fixe — pas de backoff exponentiel qui bloque indéfiniment
   reconnectDelayMs: 3000,
-  // Ping toutes les 20s pour garder la connexion vivante côté nginx
   pingIntervalMs: 20000,
 };
 
@@ -19,12 +17,46 @@ const state = {
   pingInterval: null,
 };
 
+function setWsStatus(status) {
+  const box = qs("#ws-status");
+  const label = box?.querySelector(".ws-status__label");
+
+  if (!box || !label) {
+    return;
+  }
+
+  box.classList.remove("ws--connected", "ws--disconnected");
+
+  if (status === "connected") {
+    box.classList.add("ws--connected");
+    label.textContent = "Connected";
+    return;
+  }
+
+  if (status === "disconnected") {
+    box.classList.add("ws--disconnected");
+    label.textContent = "Disconnected";
+    return;
+  }
+
+  label.textContent = "Connecting…";
+}
+
+function showSkeleton(show) {
+  const skeleton = qs("#grid-skeleton");
+
+  if (!skeleton) {
+    return;
+  }
+
+  skeleton.style.display = show ? "grid" : "none";
+}
+
 function qs(selector) {
   return document.querySelector(selector);
 }
 
 function wsUrl() {
-  // En production (https) → wss obligatoire
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/ws`;
 }
@@ -219,55 +251,57 @@ function renderMonitor(monitor) {
 
   const responseTimePart =
     latestCheck && latestCheck.response_time_ms != null
-      ? `<div class="meta" style="margin-top: 6px;">Response time: ${escapeHtml(
+      ? `<span class="mcard__tag">Response: ${escapeHtml(
           latestCheck.response_time_ms,
-        )} ms</div>`
+        )} ms</span>`
       : "";
 
   const incidentPart =
     openIncident && openIncident.message
-      ? `<div class="meta" style="margin-top: 6px; color:#fca5a5;">Incident: ${escapeHtml(
+      ? `<div class="mcard__incident">Incident: ${escapeHtml(
           openIncident.message,
         )}</div>`
       : "";
 
   return `
-    <article class="card monitor-card" data-monitor-id="${escapeHtml(
+    <article class="mcard mcard--${statusClass(status)}" data-monitor-id="${escapeHtml(
       monitor.id || "",
     )}">
-      <a
-        class="card-link-area"
-        href="${href}"
-        aria-label="Open monitor ${escapeHtml(monitor.name || "monitor")}"
-      >
-        <h3>${escapeHtml(monitor.name || "Unnamed monitor")}</h3>
-        <div class="meta">${escapeHtml(monitor.url || "")}</div>
-        <div class="meta" style="margin-top: 6px;">Interval: ${escapeHtml(
-          monitor.interval_seconds ?? "?",
-        )}s</div>
-        <div class="meta" style="margin-top: 6px;">Slug: ${escapeHtml(
-          monitor.slug || "",
-        )}</div>
-        ${responseTimePart}
-        ${incidentPart}
-        <div class="status ${statusClass(status)}">
-          ${escapeHtml(status.toUpperCase())}
+      <a class="mcard__link" href="${href}">
+        <div class="mcard__top">
+          <h3 class="mcard__name">${escapeHtml(monitor.name || "Unnamed monitor")}</h3>
+          <span class="status-badge status-badge--${statusClass(status)}">
+            <span class="status-badge__dot"></span>
+            ${escapeHtml(status.toUpperCase())}
+          </span>
+        </div>
+
+        <div class="mcard__url">${escapeHtml(monitor.url || "")}</div>
+
+        <div class="mcard__meta">
+          <span class="mcard__tag">Interval: ${escapeHtml(
+            monitor.interval_seconds ?? "?",
+          )}s</span>
+          <span class="mcard__tag">Slug: ${escapeHtml(monitor.slug || "")}</span>
+          ${responseTimePart}
         </div>
       </a>
 
-      <div class="card-actions">
+      ${incidentPart}
+
+      <div class="mcard__actions">
         ${
           isPaused
-            ? `<button class="btn btn-small btn-success" type="button" data-action="resume" data-monitor-id="${escapeHtml(
+            ? `<button class="btn btn--sm btn--resume" type="button" data-action="resume" data-monitor-id="${escapeHtml(
                 monitor.id || "",
               )}">Resume</button>`
-            : `<button class="btn btn-small btn-warning" type="button" data-action="pause" data-monitor-id="${escapeHtml(
+            : `<button class="btn btn--sm btn--pause" type="button" data-action="pause" data-monitor-id="${escapeHtml(
                 monitor.id || "",
               )}">Pause</button>`
         }
 
         <button
-          class="btn btn-small btn-danger"
+          class="btn btn--sm btn--del"
           type="button"
           data-action="delete"
           data-monitor-id="${escapeHtml(monitor.id || "")}"
@@ -279,7 +313,6 @@ function renderMonitor(monitor) {
     </article>
   `;
 }
-
 function initModal() {
   const cancel = qs("#modal-cancel");
   const confirm = qs("#modal-confirm");
@@ -383,17 +416,23 @@ function renderMonitors() {
 }
 
 async function loadMonitors() {
+  const grid = qs("#grid");
+
   try {
+    showSkeleton(true);
+
     const data = await fetchJson(API.monitors);
     state.monitors = normalizeMonitorList(data);
+
     renderMonitors();
   } catch (e) {
-    const grid = qs("#grid");
     if (grid) {
       grid.innerHTML = `<p class="empty">${escapeHtml(
         e.message || "Error loading monitors",
       )}</p>`;
     }
+  } finally {
+    showSkeleton(false);
   }
 }
 
@@ -465,17 +504,13 @@ function handleWsMessage(raw) {
   }
 }
 
-// ─── Keepalive ping ───────────────────────────────────────────────────────────
-// nginx coupe les connexions idle → on envoie un ping toutes les 20s
 function startPing(socket) {
   stopPing();
   state.pingInterval = setInterval(() => {
     if (socket.readyState === WebSocket.OPEN) {
       try {
         socket.send(JSON.stringify({ type: "ping" }));
-      } catch {
-        // socket morte, onclose va gérer
-      }
+      } catch {}
     }
   }, WS.pingIntervalMs);
 }
@@ -487,12 +522,8 @@ function stopPing() {
   }
 }
 
-// ─── Reconnexion ──────────────────────────────────────────────────────────────
-// Délai FIXE de 3s — pas de backoff exponentiel
 function scheduleReconnect() {
-  // Déjà un timer en cours → ne rien faire
   if (state.reconnectTimer !== null) return;
-  // Socket déjà en cours de connexion → ne rien faire
   if (state.ws && state.ws.readyState === WebSocket.CONNECTING) return;
 
   state.reconnectTimer = window.setTimeout(() => {
@@ -501,9 +532,7 @@ function scheduleReconnect() {
   }, WS.reconnectDelayMs);
 }
 
-// ─── Connexion WebSocket ──────────────────────────────────────────────────────
 function connectWebSocket() {
-  // Déjà ouverte ou en train de s'ouvrir → rien à faire
   if (
     state.ws &&
     (state.ws.readyState === WebSocket.OPEN ||
@@ -512,24 +541,23 @@ function connectWebSocket() {
     return;
   }
 
-  // Nettoyer l'ancienne socket sans déclencher à nouveau onclose
   if (state.ws) {
     state.ws.onclose = null;
     state.ws.onerror = null;
     try {
       state.ws.close();
-    } catch {
-      /* ignore */
-    }
+    } catch {}
     state.ws = null;
   }
 
   stopPing();
+  setWsStatus("connecting");
 
   let socket;
   try {
     socket = new WebSocket(wsUrl());
   } catch {
+    setWsStatus("disconnected");
     scheduleReconnect();
     return;
   }
@@ -537,7 +565,17 @@ function connectWebSocket() {
   state.ws = socket;
 
   socket.addEventListener("open", () => {
+    setWsStatus("connected");
     startPing(socket);
+
+    try {
+      socket.send(
+        JSON.stringify({
+          type: "status.subscribe",
+          payload: {},
+        }),
+      );
+    } catch {}
   });
 
   socket.addEventListener("message", (event) => {
@@ -547,20 +585,19 @@ function connectWebSocket() {
   socket.addEventListener("close", () => {
     stopPing();
     state.ws = null;
-    // Ne pas reconnecter si la page est cachée (onglet en arrière-plan)
+    setWsStatus("disconnected");
+
     if (!document.hidden) {
       scheduleReconnect();
     }
   });
 
   socket.addEventListener("error", () => {
-    // error est toujours suivi d'un close → onclose gère la reconnexion
     stopPing();
+    setWsStatus("disconnected");
   });
 }
 
-// ─── Reconnexion sur retour d'onglet ─────────────────────────────────────────
-// Si l'onglet était en arrière-plan, la connexion a pu être coupée
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     if (!state.ws || state.ws.readyState === WebSocket.CLOSED) {

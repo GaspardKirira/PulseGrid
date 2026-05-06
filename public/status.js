@@ -317,16 +317,13 @@ function handleWsMessage(raw) {
   }
 }
 
-// ─── Keepalive ping ───────────────────────────────────────────────────────────
 function startPing(socket) {
   stopPing();
   statusState.pingInterval = setInterval(() => {
     if (socket.readyState === WebSocket.OPEN) {
       try {
         socket.send(JSON.stringify({ type: "ping" }));
-      } catch {
-        // socket morte, onclose va gérer
-      }
+      } catch {}
     }
   }, STATUS_WS.pingIntervalMs);
 }
@@ -338,7 +335,6 @@ function stopPing() {
   }
 }
 
-// ─── Reconnexion ──────────────────────────────────────────────────────────────
 function scheduleReconnect() {
   if (statusState.reconnectTimer !== null) return;
   if (statusState.ws && statusState.ws.readyState === WebSocket.CONNECTING)
@@ -350,7 +346,6 @@ function scheduleReconnect() {
   }, STATUS_WS.reconnectDelayMs);
 }
 
-// ─── Connexion WebSocket ──────────────────────────────────────────────────────
 function connectWebSocket() {
   if (
     statusState.ws &&
@@ -360,7 +355,6 @@ function connectWebSocket() {
     return;
   }
 
-  // Nettoyer l'ancienne socket sans redéclencher onclose
   if (statusState.ws) {
     statusState.ws.onclose = null;
     statusState.ws.onerror = null;
@@ -395,9 +389,7 @@ function connectWebSocket() {
           payload: { slug },
         }),
       );
-    } catch {
-      // ignore
-    }
+    } catch {}
   });
 
   socket.addEventListener("message", (event) => {
@@ -414,11 +406,9 @@ function connectWebSocket() {
 
   socket.addEventListener("error", () => {
     stopPing();
-    // close va suivre automatiquement
   });
 }
 
-// ─── Reconnexion sur retour d'onglet ─────────────────────────────────────────
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     if (!statusState.ws || statusState.ws.readyState === WebSocket.CLOSED) {
