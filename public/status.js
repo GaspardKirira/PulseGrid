@@ -1,12 +1,17 @@
-const STATUS_WS = { reconnectDelayMs: 3000 };
+const STATUS_WS = {
+  reconnectDelayMs: 3000,
+  pingIntervalMs: 20000,
+};
 
-const statusState = { ws: null, reconnectTimer: null, currentView: null };
+const statusState = {
+  ws: null,
+  reconnectTimer: null,
+  pingInterval: null,
+  currentView: null,
+};
 
-function id(s) {
-  return document.getElementById(s);
-}
-function qs(s) {
-  return document.querySelector(s);
+function statusQs(id) {
+  return document.getElementById(id);
 }
 
 function getSlugFromPath() {
@@ -15,143 +20,118 @@ function getSlugFromPath() {
 }
 
 function formatTimestamp(ms) {
-  if (ms === null || ms === undefined) return "—";
-  const n = Number(ms);
-  if (!Number.isFinite(n)) return "—";
-  const d = new Date(n);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
+  if (ms === null || ms === undefined) {
+    return "—";
+  }
+
+  const numeric = Number(ms);
+  if (!Number.isFinite(numeric)) {
+    return "—";
+  }
+
+  const date = new Date(numeric);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleString();
 }
 
 function formatResponseTime(ms) {
-  if (ms === null || ms === undefined) return "—";
+  if (ms === null || ms === undefined) {
+    return "—";
+  }
+
   return `${ms} ms`;
 }
 
 function statusClass(status) {
   switch ((status || "").toLowerCase()) {
     case "up":
-      return "up";
+      return "status-up";
     case "down":
-      return "down";
+      return "status-down";
     case "degraded":
-      return "degraded";
+      return "status-degraded";
     case "paused":
-      return "paused";
+      return "status-paused";
     default:
-      return "unknown";
+      return "status-unknown";
   }
 }
 
-// ── WS footer indicator ──────────────────────────────
-function setWsStatus(state) {
-  const el = qs(".sp-footer__ws");
-  const label = id("footer-ws-label");
-  if (!el) return;
-  el.className = "sp-footer__ws";
-  if (state === "connected") {
-    el.classList.add("ws--connected");
-    if (label) label.textContent = "Live";
-  } else if (state === "disconnected") {
-    el.classList.add("ws--disconnected");
-    if (label) label.textContent = "Disconnected";
-  } else {
-    if (label) label.textContent = "Connecting…";
-  }
-}
-
-// ── Error/skeleton helpers ────────────────────────────
 function showError(message) {
-  const skel = id("status-skeleton");
-  if (skel) skel.style.display = "none";
-  const box = id("error-box");
-  const txt = id("error-text");
-  if (!box) return;
-  if (txt) txt.textContent = message || "Unknown error";
+  const box = statusQs("error-box");
+  if (!box) {
+    return;
+  }
+
+  box.textContent = message || "Unknown error";
   box.classList.remove("hidden");
 }
 
 function hideError() {
-  const box = id("error-box");
-  if (box) box.classList.add("hidden");
+  const box = statusQs("error-box");
+  if (!box) {
+    return;
+  }
+
+  box.classList.add("hidden");
 }
 
-function hideSkeleton() {
-  const skel = id("status-skeleton");
-  if (skel) skel.style.display = "none";
-}
-
-// ── Uptime bar ────────────────────────────────────────
-function updateUptimeFill(status) {
-  const fill = id("uptime-fill");
-  if (!fill) return;
-  const colors = {
-    up: "linear-gradient(90deg, var(--up), #00bcd4)",
-    down: "linear-gradient(90deg, var(--down), #c62828)",
-    degraded: "linear-gradient(90deg, var(--degraded), #f57f17)",
-    paused: "linear-gradient(90deg, var(--paused), #546e7a)",
-    unknown: "rgba(255,255,255,.1)",
-  };
-  fill.style.background = colors[statusClass(status)] || colors.unknown;
-}
-
-// ── Render ────────────────────────────────────────────
 function renderStatus(view) {
   statusState.currentView = view;
 
   const monitor = view?.monitor || {};
-  const lc = view?.latest_check || null;
-  const inc = view?.open_incident || null;
+  const latestCheck = view?.latest_check || null;
+  const openIncident = view?.open_incident || null;
 
-  document.title = `${monitor.name || "Monitor"} · PulseGrid`;
+  const hero = statusQs("hero");
+  const metrics = statusQs("metrics");
+  const incidentBox = statusQs("incident-box");
 
-  const resolved = monitor.status || lc?.status || "unknown";
-  const sc = statusClass(resolved);
+  document.title = `${monitor.name || "Monitor"} · PulseGrid Status`;
 
-  if (id("monitor-name"))
-    id("monitor-name").textContent = monitor.name || "Unnamed monitor";
-  if (id("monitor-url")) id("monitor-url").textContent = monitor.url || "";
-  if (id("monitor-meta"))
-    id("monitor-meta").textContent =
-      `Slug: ${monitor.slug || "—"} · Interval: ${monitor.interval_seconds ?? "—"}s`;
+  const resolvedStatus = monitor.status || latestCheck?.status || "unknown";
 
-  const pill = id("monitor-status-pill");
-  if (pill) {
-    pill.textContent = resolved.toUpperCase();
-    pill.className = `sp-pill sp-pill--${sc}`;
-  }
+  statusQs("monitor-name").textContent = monitor.name || "Unnamed monitor";
+  statusQs("monitor-url").textContent = monitor.url || "";
+  statusQs("monitor-meta").textContent =
+    `Slug: ${monitor.slug || "—"} • Interval: ${monitor.interval_seconds ?? "—"}s`;
 
-  if (id("latest-check-status"))
-    id("latest-check-status").textContent = lc?.status
-      ? lc.status.toUpperCase()
-      : "—";
-  if (id("response-time"))
-    id("response-time").textContent = formatResponseTime(lc?.response_time_ms);
-  if (id("checked-at"))
-    id("checked-at").textContent = formatTimestamp(lc?.checked_at_ms);
+  const pill = statusQs("monitor-status-pill");
+  pill.textContent = resolvedStatus.toUpperCase();
+  pill.className = `status-pill ${statusClass(resolvedStatus)}`;
 
-  updateUptimeFill(resolved);
+  statusQs("latest-check-status").textContent = latestCheck?.status
+    ? latestCheck.status.toUpperCase()
+    : "—";
 
-  const incBox = id("incident-box");
-  if (inc) {
-    if (id("incident-message"))
-      id("incident-message").textContent = inc.message || "Incident open";
-    if (id("incident-started"))
-      id("incident-started").textContent =
-        `Started: ${formatTimestamp(inc.started_at_ms)}`;
-    incBox?.classList.remove("hidden");
+  statusQs("response-time").textContent = formatResponseTime(
+    latestCheck?.response_time_ms,
+  );
+
+  statusQs("checked-at").textContent = formatTimestamp(
+    latestCheck?.checked_at_ms,
+  );
+
+  if (openIncident) {
+    statusQs("incident-message").textContent =
+      openIncident.message || "Incident open";
+    statusQs("incident-started").textContent =
+      `Started at: ${formatTimestamp(openIncident.started_at_ms)}`;
+    incidentBox.classList.remove("hidden");
   } else {
-    incBox?.classList.add("hidden");
+    incidentBox.classList.add("hidden");
   }
 
-  hideSkeleton();
-  id("hero")?.classList.remove("hidden");
-  id("metrics")?.classList.remove("hidden");
+  hero.classList.remove("hidden");
+  metrics.classList.remove("hidden");
 }
 
-// ── Load ──────────────────────────────────────────────
 async function loadStatus() {
   hideError();
+
   const slug = getSlugFromPath();
   if (!slug) {
     showError("Missing monitor slug in URL.");
@@ -159,80 +139,99 @@ async function loadStatus() {
   }
 
   try {
-    const res = await fetch(`/api/status/${encodeURIComponent(slug)}`);
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      showError(d?.error || "Failed to load public status.");
+    const response = await fetch(`/api/status/${encodeURIComponent(slug)}`);
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      showError(data?.error || "Failed to load public status.");
       return;
     }
-    const data = await res.json();
+
+    const data = await response.json();
+
     if (!data || !data.monitor) {
       showError("Invalid response format.");
       return;
     }
+
     renderStatus(data);
-  } catch (err) {
-    console.error("[PulseGrid Status] loadStatus failed:", err);
+  } catch (error) {
+    console.error("[PulseGrid Status] loadStatus failed:", error);
     showError("Network error while loading status.");
   }
 }
 
-// ── WS merge helpers ──────────────────────────────────
+function wsUrl() {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/ws`;
+}
+
 function mergeMonitorUpdate(data) {
-  const pv = statusState.currentView || {};
-  const pm = pv.monitor || {};
-  const pl = pv.latest_check || null;
-  const hasCheck =
+  const previousView = statusState.currentView || {};
+  const previousMonitor = previousView.monitor || {};
+  const previousLatestCheck = previousView.latest_check || null;
+  const previousIncident = previousView.open_incident || null;
+
+  const hasLiveCheckData =
     data.response_time_ms !== undefined || data.checked_at_ms !== undefined;
-  const nextLatest = hasCheck
+
+  const nextLatestCheck = hasLiveCheckData
     ? {
-        status: data.status ?? pl?.status ?? pm.status,
+        status:
+          data.status ?? previousLatestCheck?.status ?? previousMonitor.status,
         response_time_ms:
           data.response_time_ms !== undefined
             ? data.response_time_ms
-            : pl?.response_time_ms,
+            : previousLatestCheck?.response_time_ms,
         checked_at_ms:
           data.checked_at_ms !== undefined
             ? data.checked_at_ms
-            : pl?.checked_at_ms,
+            : previousLatestCheck?.checked_at_ms,
       }
-    : pl;
+    : previousLatestCheck;
+
   return {
     monitor: {
-      ...pm,
-      id: data.id ?? pm.id,
-      name: data.name ?? pm.name,
-      slug: data.slug ?? pm.slug,
-      url: data.url ?? pm.url,
-      interval_seconds: data.interval_seconds ?? pm.interval_seconds,
-      status: data.status ?? pm.status,
-      created_at_ms: data.created_at_ms ?? pm.created_at_ms,
-      updated_at_ms: data.updated_at_ms ?? pm.updated_at_ms,
+      ...previousMonitor,
+      id: data.id ?? previousMonitor.id,
+      name: data.name ?? previousMonitor.name,
+      slug: data.slug ?? previousMonitor.slug,
+      url: data.url ?? previousMonitor.url,
+      interval_seconds:
+        data.interval_seconds ?? previousMonitor.interval_seconds,
+      status: data.status ?? previousMonitor.status,
+      created_at_ms: data.created_at_ms ?? previousMonitor.created_at_ms,
+      updated_at_ms: data.updated_at_ms ?? previousMonitor.updated_at_ms,
     },
-    latest_check: nextLatest,
-    open_incident: pv.open_incident || null,
+    latest_check: nextLatestCheck,
+    open_incident: previousIncident,
   };
 }
 
 function mergeCheckRecorded(data) {
-  const pv = statusState.currentView || {};
-  const pm = pv.monitor || {};
+  const previousView = statusState.currentView || {};
+  const previousMonitor = previousView.monitor || {};
+
   return {
-    monitor: { ...pm, status: data.status ?? pm.status },
+    monitor: {
+      ...previousMonitor,
+      status: data.status ?? previousMonitor.status,
+    },
     latest_check: {
       status: data.status,
       response_time_ms: data.response_time_ms,
       checked_at_ms: data.checked_at_ms,
     },
-    open_incident: pv.open_incident || null,
+    open_incident: previousView.open_incident || null,
   };
 }
 
 function mergeIncidentOpened(data) {
-  const pv = statusState.currentView || {};
+  const previousView = statusState.currentView || {};
+
   return {
-    monitor: pv.monitor || {},
-    latest_check: pv.latest_check || null,
+    monitor: previousView.monitor || {},
+    latest_check: previousView.latest_check || null,
     open_incident: {
       id: data.id,
       monitor_id: data.monitor_id,
@@ -245,108 +244,188 @@ function mergeIncidentOpened(data) {
 }
 
 function mergeIncidentResolved() {
-  const pv = statusState.currentView || {};
+  const previousView = statusState.currentView || {};
+
   return {
-    monitor: pv.monitor || {},
-    latest_check: pv.latest_check || null,
+    monitor: previousView.monitor || {},
+    latest_check: previousView.latest_check || null,
     open_incident: null,
   };
 }
 
-// ── WS ────────────────────────────────────────────────
-function wsUrl() {
-  const p = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${p}//${window.location.host}/ws`;
-}
-
 function handleWsMessage(raw) {
   let msg;
+
   try {
     msg = JSON.parse(raw);
   } catch {
     return;
   }
-  if (!msg || typeof msg !== "object") return;
+
+  if (!msg || typeof msg !== "object") {
+    return;
+  }
+
   if (
     msg.type === "ws.connected" ||
     msg.type === "monitor.subscribed" ||
     msg.type === "pong"
-  )
+  ) {
     return;
+  }
 
   const currentSlug = getSlugFromPath();
-  const currentId = statusState.currentView?.monitor?.id || null;
+  const currentMonitorId = statusState.currentView?.monitor?.id || null;
 
   if (msg.type === "monitor.updated" && msg.data) {
-    if (msg.data.slug !== currentSlug) return;
+    if (msg.data.slug !== currentSlug) {
+      return;
+    }
+
     renderStatus(mergeMonitorUpdate(msg.data));
     hideError();
     return;
   }
+
   if (msg.type === "check.recorded" && msg.data) {
-    if (!currentId || msg.data.monitor_id !== currentId) return;
+    if (!currentMonitorId || msg.data.monitor_id !== currentMonitorId) {
+      return;
+    }
+
     renderStatus(mergeCheckRecorded(msg.data));
     hideError();
     return;
   }
+
   if (msg.type === "incident.opened" && msg.data) {
-    if (!currentId || msg.data.monitor_id !== currentId) return;
+    if (!currentMonitorId || msg.data.monitor_id !== currentMonitorId) {
+      return;
+    }
+
     renderStatus(mergeIncidentOpened(msg.data));
     hideError();
     return;
   }
+
   if (msg.type === "incident.resolved" && msg.data) {
-    if (!currentId || msg.data.monitor_id !== currentId) return;
+    if (!currentMonitorId || msg.data.monitor_id !== currentMonitorId) {
+      return;
+    }
+
     renderStatus(mergeIncidentResolved());
     hideError();
   }
 }
 
+// ─── Keepalive ping ───────────────────────────────────────────────────────────
+function startPing(socket) {
+  stopPing();
+  statusState.pingInterval = setInterval(() => {
+    if (socket.readyState === WebSocket.OPEN) {
+      try {
+        socket.send(JSON.stringify({ type: "ping" }));
+      } catch {
+        // socket morte, onclose va gérer
+      }
+    }
+  }, STATUS_WS.pingIntervalMs);
+}
+
+function stopPing() {
+  if (statusState.pingInterval) {
+    clearInterval(statusState.pingInterval);
+    statusState.pingInterval = null;
+  }
+}
+
+// ─── Reconnexion ──────────────────────────────────────────────────────────────
 function scheduleReconnect() {
-  if (statusState.reconnectTimer) return;
+  if (statusState.reconnectTimer !== null) return;
+  if (statusState.ws && statusState.ws.readyState === WebSocket.CONNECTING)
+    return;
+
   statusState.reconnectTimer = window.setTimeout(() => {
     statusState.reconnectTimer = null;
     connectWebSocket();
   }, STATUS_WS.reconnectDelayMs);
 }
 
+// ─── Connexion WebSocket ──────────────────────────────────────────────────────
 function connectWebSocket() {
   if (
     statusState.ws &&
     (statusState.ws.readyState === WebSocket.OPEN ||
       statusState.ws.readyState === WebSocket.CONNECTING)
-  )
+  ) {
     return;
-  setWsStatus("connecting");
-  try {
-    const socket = new WebSocket(wsUrl());
-    statusState.ws = socket;
-
-    socket.addEventListener("open", () => {
-      setWsStatus("connected");
-      const slug = getSlugFromPath();
-      try {
-        socket.send(
-          JSON.stringify({ type: "monitor.subscribe", payload: { slug } }),
-        );
-      } catch {
-        /* ignore */
-      }
-    });
-    socket.addEventListener("message", (e) => handleWsMessage(e.data));
-    socket.addEventListener("close", () => {
-      statusState.ws = null;
-      setWsStatus("disconnected");
-      scheduleReconnect();
-    });
-    socket.addEventListener("error", () => {
-      if (statusState.ws) statusState.ws.close();
-    });
-  } catch {
-    setWsStatus("disconnected");
-    scheduleReconnect();
   }
+
+  // Nettoyer l'ancienne socket sans redéclencher onclose
+  if (statusState.ws) {
+    statusState.ws.onclose = null;
+    statusState.ws.onerror = null;
+    try {
+      statusState.ws.close();
+    } catch {
+      /* ignore */
+    }
+    statusState.ws = null;
+  }
+
+  stopPing();
+
+  let socket;
+  try {
+    socket = new WebSocket(wsUrl());
+  } catch {
+    scheduleReconnect();
+    return;
+  }
+
+  statusState.ws = socket;
+
+  socket.addEventListener("open", () => {
+    startPing(socket);
+
+    const slug = getSlugFromPath();
+    try {
+      socket.send(
+        JSON.stringify({
+          type: "monitor.subscribe",
+          payload: { slug },
+        }),
+      );
+    } catch {
+      // ignore
+    }
+  });
+
+  socket.addEventListener("message", (event) => {
+    handleWsMessage(event.data);
+  });
+
+  socket.addEventListener("close", () => {
+    stopPing();
+    statusState.ws = null;
+    if (!document.hidden) {
+      scheduleReconnect();
+    }
+  });
+
+  socket.addEventListener("error", () => {
+    stopPing();
+    // close va suivre automatiquement
+  });
 }
+
+// ─── Reconnexion sur retour d'onglet ─────────────────────────────────────────
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    if (!statusState.ws || statusState.ws.readyState === WebSocket.CLOSED) {
+      connectWebSocket();
+    }
+  }
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   loadStatus();
