@@ -17,6 +17,20 @@ const state = {
   pingInterval: null,
 };
 
+let monitorRenderTimer = null;
+
+function scheduleMonitorRender() {
+  if (monitorRenderTimer) {
+    clearTimeout(monitorRenderTimer);
+  }
+
+  monitorRenderTimer = setTimeout(() => {
+    monitorRenderTimer = null;
+    renderMonitors();
+    updateSummaryFromMonitors();
+  }, 300);
+}
+
 function setWsStatus(status) {
   const box = qs("#ws-status");
   const label = box?.querySelector(".ws-status__label");
@@ -491,8 +505,7 @@ function upsertMonitor(monitor) {
     };
   }
 
-  renderMonitors();
-  updateSummaryFromMonitors();
+  scheduleMonitorRender();
 }
 
 function handleWsMessage(raw) {
@@ -552,8 +565,7 @@ function handleWsMessage(raw) {
         },
       };
 
-      renderMonitors();
-      updateSummaryFromMonitors();
+      scheduleMonitorRender();
     }
 
     return;
@@ -571,8 +583,7 @@ function handleWsMessage(raw) {
         open_incident: msg.data,
       };
 
-      renderMonitors();
-      updateSummaryFromMonitors();
+      scheduleMonitorRender();
     }
 
     return;
@@ -589,8 +600,7 @@ function handleWsMessage(raw) {
         open_incident: null,
       };
 
-      renderMonitors();
-      updateSummaryFromMonitors();
+      scheduleMonitorRender();
     }
 
     return;
