@@ -1,35 +1,40 @@
 /* =====================================================
-   PulseGrid – status.css  (monitor detail page)
+   PulseGrid – status.css  (Softadastra brand)
    ===================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,700;9..144,900&display=swap');
 
 :root {
-  --bg:         #080b10;
-  --bg-1:       #0d1117;
-  --bg-2:       #111820;
-  --bg-3:       #161e28;
+  --bg:         #0d1f1e;
+  --bg-1:       #112221;
+  --bg-2:       #162a28;
+  --bg-3:       #1c3330;
   --border:     rgba(255,255,255,.07);
-  --border-hi:  rgba(255,255,255,.13);
-  --text:       rgba(255,255,255,.92);
-  --text-2:     rgba(255,255,255,.55);
-  --text-3:     rgba(255,255,255,.28);
+  --border-hi:  rgba(200,140,80,.2);
+  --text:       rgba(255,248,235,.93);
+  --text-2:     rgba(255,248,235,.55);
+  --text-3:     rgba(255,248,235,.28);
 
-  --accent:     #00e5ff;
-  --accent-glow:rgba(0,229,255,.18);
+  --accent:     #e8722a;
+  --accent-light: #f4a96a;
+  --accent-glow:  rgba(232,114,42,.22);
 
-  --up:         #00e676;
-  --down:       #ff1744;
-  --degraded:   #ffab00;
-  --paused:     #78909c;
-  --incident:   #ff6d00;
+  --teal:       #2a7a6e;
+  --teal-light: #3da08f;
 
-  --font-head:  'Syne', system-ui, sans-serif;
-  --font-mono:  'Space Mono', monospace;
-  --radius:     16px;
-  --radius-lg:  24px;
-  --radius-xl:  32px;
-  --shadow:     0 24px 64px rgba(0,0,0,.55);
+  --up:         #4db888;
+  --down:       #e05252;
+  --degraded:   #d4a017;
+  --paused:     #6b8a85;
+  --incident:   #e8722a;
+
+  --font-head:    'DM Sans', system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-mono:    'Space Mono', monospace;
+  --radius:     14px;
+  --radius-lg:  22px;
+  --radius-xl:  28px;
+  --shadow:     0 24px 64px rgba(0,0,0,.6);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -60,13 +65,13 @@ a { color: inherit; text-decoration: none; }
 .ambient__orb--1 {
   width: 500px; height: 500px;
   top: -150px; right: -100px;
-  background: radial-gradient(circle, #00e5ff44, transparent 70%);
+  background: radial-gradient(circle, rgba(232,114,42,.4), transparent 70%);
   animation: af1 20s ease-in-out infinite;
 }
 .ambient__orb--2 {
   width: 400px; height: 400px;
   bottom: -100px; left: -50px;
-  background: radial-gradient(circle, #00e67622, transparent 70%);
+  background: radial-gradient(circle, rgba(42,122,110,.35), transparent 70%);
   animation: af2 16s ease-in-out infinite;
 }
 .ambient__grid {
@@ -102,7 +107,7 @@ a { color: inherit; text-decoration: none; }
   justify-content: space-between;
   gap: 16px;
   padding: 14px 20px;
-  background: rgba(13,17,23,.8);
+  background: rgba(14,30,28,.85);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-hi);
   border-radius: var(--radius-xl);
@@ -118,18 +123,19 @@ a { color: inherit; text-decoration: none; }
   display: grid;
   place-items: center;
   border-radius: var(--radius);
-  background: rgba(0,229,255,.08);
-  border: 1px solid rgba(0,229,255,.2);
+  background: linear-gradient(135deg, var(--teal), var(--bg-3));
+  border: 1px solid rgba(232,114,42,.3);
   font-family: var(--font-mono);
   font-size: .78rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-light);
 }
 .sp-brand__name {
+  font-family: var(--font-display);
   font-size: 1.1rem;
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: -.01em;
-  background: linear-gradient(135deg, #fff 40%, var(--accent));
+  background: linear-gradient(135deg, var(--text) 30%, var(--accent-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -149,7 +155,7 @@ a { color: inherit; text-decoration: none; }
 .sp-back:hover {
   color: var(--text);
   border-color: var(--accent);
-  background: rgba(0,229,255,.06);
+  background: rgba(232,114,42,.08);
 }
 
 /* ── Main ───────────────────────────────────────────── */
@@ -202,7 +208,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ── Hero ───────────────────────────────────────────── */
 .sp-hero {
-  background: rgba(13,17,23,.8);
+  background: rgba(14,30,28,.82);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-hi);
   border-radius: var(--radius-xl);
@@ -226,14 +232,15 @@ a { color: inherit; text-decoration: none; }
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-light);
   margin-bottom: 8px;
 }
 
 .sp-hero__title {
+  font-family: var(--font-display);
   font-size: clamp(1.6rem, 4vw, 2.4rem);
-  font-weight: 800;
-  letter-spacing: -.03em;
+  font-weight: 900;
+  letter-spacing: -.02em;
   line-height: 1.1;
   margin-bottom: 8px;
 }
@@ -241,7 +248,7 @@ a { color: inherit; text-decoration: none; }
 .sp-hero__url {
   font-family: var(--font-mono);
   font-size: .82rem;
-  color: var(--accent);
+  color: var(--accent-light);
   word-break: break-all;
   margin-bottom: 6px;
 }
@@ -274,30 +281,30 @@ a { color: inherit; text-decoration: none; }
 }
 
 .sp-pill--up {
-  background: rgba(0,230,118,.1);
+  background: rgba(77,184,136,.1);
   color: var(--up);
-  border: 1px solid rgba(0,230,118,.3);
+  border: 1px solid rgba(77,184,136,.3);
 }
 .sp-pill--up::before { background: var(--up); box-shadow: 0 0 8px var(--up); animation: blink 2s ease-in-out infinite; }
 
 .sp-pill--down {
-  background: rgba(255,23,68,.1);
+  background: rgba(224,82,82,.1);
   color: var(--down);
-  border: 1px solid rgba(255,23,68,.3);
+  border: 1px solid rgba(224,82,82,.3);
 }
 .sp-pill--down::before { background: var(--down); }
 
 .sp-pill--degraded {
-  background: rgba(255,171,0,.1);
+  background: rgba(212,160,23,.1);
   color: var(--degraded);
-  border: 1px solid rgba(255,171,0,.3);
+  border: 1px solid rgba(212,160,23,.3);
 }
 .sp-pill--degraded::before { background: var(--degraded); animation: blink 1.5s ease-in-out infinite; }
 
 .sp-pill--paused {
-  background: rgba(120,144,156,.1);
+  background: rgba(107,138,133,.1);
   color: var(--paused);
-  border: 1px solid rgba(120,144,156,.3);
+  border: 1px solid rgba(107,138,133,.3);
 }
 .sp-pill--paused::before { background: var(--paused); }
 
@@ -321,7 +328,7 @@ a { color: inherit; text-decoration: none; }
   height: 100%;
   width: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--up), #00bcd4);
+  background: linear-gradient(90deg, var(--up), var(--teal-light));
   transform-origin: left;
   transition: background 1s ease;
 }
@@ -335,17 +342,17 @@ a { color: inherit; text-decoration: none; }
 .sp-metrics.hidden { display: none; }
 
 .sp-card {
-  background: rgba(13,17,23,.8);
+  background: rgba(14,30,28,.82);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-hi);
   border-radius: var(--radius-lg);
   padding: 22px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
   transition: transform .2s, box-shadow .2s;
 }
 .sp-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 36px rgba(0,0,0,.45);
+  box-shadow: 0 14px 36px rgba(0,0,0,.5);
 }
 
 .sp-card--metric {
@@ -362,19 +369,20 @@ a { color: inherit; text-decoration: none; }
   border-radius: 12px;
 }
 .sp-card__icon--check {
-  background: rgba(0,230,118,.1);
-  border: 1px solid rgba(0,230,118,.2);
+  background: rgba(77,184,136,.1);
+  border: 1px solid rgba(77,184,136,.25);
   color: var(--up);
 }
 .sp-card__icon--speed {
-  background: rgba(0,229,255,.1);
-  border: 1px solid rgba(0,229,255,.2);
-  color: var(--accent);
+  /* Teal icon for response time */
+  background: rgba(42,122,110,.15);
+  border: 1px solid rgba(42,122,110,.3);
+  color: var(--teal-light);
 }
 .sp-card__icon--time {
-  background: rgba(255,171,0,.1);
-  border: 1px solid rgba(255,171,0,.2);
-  color: var(--degraded);
+  background: rgba(232,114,42,.1);
+  border: 1px solid rgba(232,114,42,.25);
+  color: var(--accent-light);
 }
 
 .sp-card__value {

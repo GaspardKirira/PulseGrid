@@ -227,6 +227,42 @@ function renderSummary(data) {
   incidents.textContent = data?.open_incidents ?? 0;
 }
 
+function updateSummaryFromMonitors() {
+  const totals = {
+    total_monitors: state.monitors.length,
+    up_monitors: 0,
+    down_monitors: 0,
+    degraded_monitors: 0,
+    paused_monitors: 0,
+    open_incidents: 0,
+  };
+
+  for (const monitor of state.monitors) {
+    switch ((monitor.status || "").toLowerCase()) {
+      case "up":
+        totals.up_monitors += 1;
+        break;
+      case "down":
+        totals.down_monitors += 1;
+        break;
+      case "degraded":
+        totals.degraded_monitors += 1;
+        break;
+      case "paused":
+        totals.paused_monitors += 1;
+        break;
+      default:
+        break;
+    }
+
+    if (monitor.open_incident) {
+      totals.open_incidents += 1;
+    }
+  }
+
+  renderSummary(totals);
+}
+
 async function loadSummary() {
   try {
     const data = await fetchJson(API.summary);
@@ -442,7 +478,9 @@ function upsertMonitor(monitor) {
     return;
   }
 
-  const index = state.monitors.findIndex((item) => item.id === normalized.id);
+  const index = state.monitors.findIndex(
+    (item) => String(item.id) === String(normalized.id),
+  );
 
   if (index === -1) {
     state.monitors.unshift(normalized);
@@ -454,6 +492,7 @@ function upsertMonitor(monitor) {
   }
 
   renderMonitors();
+  updateSummaryFromMonitors();
 }
 
 function handleWsMessage(raw) {
@@ -495,11 +534,65 @@ function handleWsMessage(raw) {
     return;
   }
 
-  if (msg.type === "check.recorded") {
+  if (msg.type === "check.recorded" && msg.data) {
+    const index = state.monitors.findIndex(
+      (item) => String(item.id) === String(msg.data.monitor_id),
+    );
+
+    if (index !== -1) {
+      const previous = state.monitors[index];
+
+      state.monitors[index] = {
+        ...previous,
+        status: msg.data.status || previous.status,
+        latest_check: {
+          status: msg.data.status,
+          response_time_ms: msg.data.response_time_ms,
+          checked_at_ms: msg.data.checked_at_ms,
+        },
+      };
+
+      renderMonitors();
+      updateSummaryFromMonitors();
+    }
+
     return;
   }
 
-  if (msg.type === "incident.opened" || msg.type === "incident.resolved") {
+  if (msg.type === "incident.opened" && msg.data) {
+    const index = state.monitors.findIndex(
+      (item) => String(item.id) === String(msg.data.monitor_id),
+    );
+
+    if (index !== -1) {
+      state.monitors[index] = {
+        ...state.monitors[index],
+        status: "down",
+        open_incident: msg.data,
+      };
+
+      renderMonitors();
+      updateSummaryFromMonitors();
+    }
+
+    return;
+  }
+
+  if (msg.type === "incident.resolved" && msg.data) {
+    const index = state.monitors.findIndex(
+      (item) => String(item.id) === String(msg.data.monitor_id),
+    );
+
+    if (index !== -1) {
+      state.monitors[index] = {
+        ...state.monitors[index],
+        open_incident: null,
+      };
+
+      renderMonitors();
+      updateSummaryFromMonitors();
+    }
+
     return;
   }
 }
